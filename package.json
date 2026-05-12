@@ -1,0 +1,14 @@
+{
+  "name": "cotizapp",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:frontend": "npm run dev -w @cotizapp/frontend",
+    "dev:backend": "npm run dev -w @cotizapp/backend",
+    "build": "npm run build --workspaces",
+    "start": "npm run start -w @cotizapp/backend"
+  }
+}
+
