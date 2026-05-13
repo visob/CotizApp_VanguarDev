@@ -45,3 +45,43 @@ export async function apiRequest<T>(input: {
 
   return (await response.json()) as T;
 }
+
+export async function apiRequestBlob(input: {
+  path: string;
+  method?: HttpMethod;
+  body?: unknown;
+  accept?: string;
+}) {
+  const url = new URL(input.path, env.apiBaseUrl);
+
+  const headers = new Headers();
+  headers.set("Accept", input.accept ?? "application/octet-stream");
+
+  if (input.body !== undefined) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  if (authToken) {
+    headers.set("Authorization", `Bearer ${authToken}`);
+  }
+
+  const response = await fetch(url, {
+    method: input.method ?? "GET",
+    headers,
+    body: input.body !== undefined ? JSON.stringify(input.body) : undefined
+  });
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    const error = new Error(text || `HTTP ${response.status}`);
+    (error as Error & { status?: number }).status = response.status;
+    throw error;
+  }
+
+  const blob = await response.blob();
+  const contentDisposition = response.headers.get("content-disposition") ?? "";
+  const filenameMatch = contentDisposition.match(/filename="([^"]+)"/i);
+  const filename = filenameMatch?.[1];
+
+  return { blob, filename, contentType: response.headers.get("content-type") ?? "", headers: response.headers };
+}
