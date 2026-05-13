@@ -24,6 +24,7 @@ type PdfRow = {
   usuario_email: string;
   item_cantidad: number;
   item_precio_unitario_momento: string;
+  item_descuento_porcentaje: string;
   producto_nombre: string;
 };
 
@@ -47,6 +48,7 @@ export async function generateQuotePdfBuffer(quoteId: number) {
         u.email as usuario_email,
         i.cantidad as item_cantidad,
         i.precio_unitario_momento as item_precio_unitario_momento,
+        i.descuento_porcentaje as item_descuento_porcentaje,
         p.nombre as producto_nombre
       from cotizaciones c
       join clientes cl on cl.id = c.id_cliente
@@ -124,9 +126,16 @@ export async function generateQuotePdfBuffer(quoteId: number) {
 
   for (const r of rows) {
     const unitCents = parseMoneyToCents(r.item_precio_unitario_momento) ?? 0n;
-    const lineTotalCents = unitCents * BigInt(r.item_cantidad);
+    const grossLineCents = unitCents * BigInt(r.item_cantidad);
+    const discountBp = parsePercentToBasisPoints(r.item_descuento_porcentaje) ?? 0n;
+    const discountCentsLine = (grossLineCents * discountBp + 5000n) / 10000n;
+    const lineTotalCents = grossLineCents > discountCentsLine ? grossLineCents - discountCentsLine : 0n;
     const lineTotal = centsToMoneyString(lineTotalCents);
-    doc.fontSize(10).text(r.producto_nombre, colDesc, y, { width: 250 });
+    const desc =
+      r.item_descuento_porcentaje && r.item_descuento_porcentaje !== "0" && r.item_descuento_porcentaje !== "0.00"
+        ? `${r.producto_nombre} (Dto ${r.item_descuento_porcentaje}%)`
+        : r.producto_nombre;
+    doc.fontSize(10).text(desc, colDesc, y, { width: 250 });
     doc.text(String(r.item_cantidad), colQty, y);
     doc.text(centsToMoneyString(unitCents), colUnit, y);
     doc.text(lineTotal, colTotal, y);

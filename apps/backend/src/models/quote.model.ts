@@ -5,6 +5,7 @@ export type QuoteRow = {
   id_cliente: string | number;
   id_usuario: string | number;
   fecha_emision: string;
+  fecha_vencimiento?: string | null;
   moneda: string;
   tipo_cambio: string;
   subtotal: string;
@@ -12,6 +13,12 @@ export type QuoteRow = {
   descuento_global: string;
   total_final: string;
   estado: string;
+  notas?: string | null;
+  plazo_entrega?: string | null;
+  forma_pago?: string | null;
+  lugar_entrega?: string | null;
+  mantenimiento_oferta?: string | null;
+  proxima_alerta?: string | null;
 };
 
 export type QuoteItemRow = {
@@ -20,17 +27,77 @@ export type QuoteItemRow = {
   id_producto: string | number;
   cantidad: number;
   precio_unitario_momento: string;
+  descuento_porcentaje?: string;
   producto_nombre: string;
 };
 
-export async function listQuotes() {
-  const result = await pool.query<QuoteRow>(
+export type QuoteListRow = {
+  id: string | number;
+  fecha_emision: string;
+  moneda: string;
+  total_final: string;
+  estado: string;
+  cliente_nombre_empresa: string;
+  cliente_clasificacion: string | null;
+  proxima_alerta: string | null;
+};
+
+export async function listQuotes(input?: {
+  q?: string;
+  estado?: string;
+  from?: string;
+  to?: string;
+}) {
+  const where: string[] = [];
+  const values: unknown[] = [];
+
+  if (input?.estado) {
+    values.push(input.estado);
+    where.push(`c.estado = $${values.length}`);
+  }
+
+  if (input?.from) {
+    values.push(input.from);
+    where.push(`c.fecha_emision >= $${values.length}::timestamptz`);
+  }
+
+  if (input?.to) {
+    values.push(input.to);
+    where.push(`c.fecha_emision <= $${values.length}::timestamptz`);
+  }
+
+  if (input?.q) {
+    values.push(`%${input.q}%`);
+    const idx = values.length;
+    where.push(`(cl.nombre_empresa ilike $${idx} or cast(c.id as text) ilike $${idx})`);
+  }
+
+  const whereSql = where.length ? `where ${where.join(" and ")}` : "";
+
+  const result = await pool.query<QuoteListRow>(
     `
-      select id, id_cliente, id_usuario, fecha_emision, moneda, tipo_cambio, subtotal, iva_porcentaje,
-             descuento_global, total_final, estado
-      from cotizaciones
-      order by id desc
-    `
+      select
+        c.id,
+        c.fecha_emision,
+        c.moneda,
+        c.total_final,
+        c.estado,
+        cl.nombre_empresa as cliente_nombre_empresa,
+        cl.clasificacion as cliente_clasificacion,
+        coalesce(
+          c.proxima_alerta,
+          (
+            select min(s.fecha_reactivacion_programada)
+            from seguimiento s
+            where s.id_cotizacion = c.id and s.fecha_reactivacion_programada is not null
+          )
+        ) as proxima_alerta
+      from cotizaciones c
+      join clientes cl on cl.id = c.id_cliente
+      ${whereSql}
+      order by c.id desc
+    `,
+    values
   );
   return result.rows;
 }
@@ -38,8 +105,8 @@ export async function listQuotes() {
 export async function getQuoteById(id: number) {
   const result = await pool.query<QuoteRow>(
     `
-      select id, id_cliente, id_usuario, fecha_emision, moneda, tipo_cambio, subtotal, iva_porcentaje,
-             descuento_global, total_final, estado
+      select id, id_cliente, id_usuario, fecha_emision, fecha_vencimiento, moneda, tipo_cambio, subtotal, iva_porcentaje,
+             descuento_global, total_final, estado, notas, plazo_entrega, forma_pago, lugar_entrega, mantenimiento_oferta, proxima_alerta
       from cotizaciones
       where id = $1
       limit 1
@@ -52,7 +119,7 @@ export async function getQuoteById(id: number) {
 export async function listQuoteItems(quoteId: number) {
   const result = await pool.query<QuoteItemRow>(
     `
-      select i.id, i.id_cotizacion, i.id_producto, i.cantidad, i.precio_unitario_momento,
+      select i.id, i.id_cotizacion, i.id_producto, i.cantidad, i.precio_unitario_momento, i.descuento_porcentaje,
              p.nombre as producto_nombre
       from items_cotizacion i
       join productos p on p.id = i.id_producto
@@ -68,6 +135,7 @@ export type CreateQuoteInput = {
   idCliente: number;
   idUsuario: number;
   fechaEmisionIso: string;
+  fechaVencimientoIso: string | null;
   moneda: "ARS" | "USD";
   tipoCambio: string;
   subtotal: string;
@@ -75,10 +143,17 @@ export type CreateQuoteInput = {
   descuentoGlobal: string;
   totalFinal: string;
   estado: string;
+  notas: string | null;
+  plazoEntrega: string | null;
+  formaPago: string | null;
+  lugarEntrega: string | null;
+  mantenimientoOferta: string | null;
+  proximaAlertaIso: string | null;
   items: Array<{
     idProducto: number;
     cantidad: number;
     precioUnitarioMomento: string;
+    descuentoPorcentaje: string;
   }>;
 };
 
@@ -90,22 +165,30 @@ export async function createQuoteTransactional(input: CreateQuoteInput) {
     const quoteResult = await client.query<{ id: string | number }>(
       `
         insert into cotizaciones
-          (id_cliente, id_usuario, fecha_emision, moneda, tipo_cambio, subtotal, iva_porcentaje, descuento_global, total_final, estado)
+          (id_cliente, id_usuario, fecha_emision, fecha_vencimiento, moneda, tipo_cambio, subtotal, iva_porcentaje, descuento_global, total_final, estado,
+           notas, plazo_entrega, forma_pago, lugar_entrega, mantenimiento_oferta, proxima_alerta)
         values
-          ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+          ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
         returning id
       `,
       [
         input.idCliente,
         input.idUsuario,
         input.fechaEmisionIso,
+        input.fechaVencimientoIso,
         input.moneda,
         input.tipoCambio,
         input.subtotal,
         input.ivaPorcentaje,
         input.descuentoGlobal,
         input.totalFinal,
-        input.estado
+        input.estado,
+        input.notas,
+        input.plazoEntrega,
+        input.formaPago,
+        input.lugarEntrega,
+        input.mantenimientoOferta,
+        input.proximaAlertaIso
       ]
     );
 
@@ -117,10 +200,10 @@ export async function createQuoteTransactional(input: CreateQuoteInput) {
     for (const item of input.items) {
       await client.query(
         `
-          insert into items_cotizacion (id_cotizacion, id_producto, cantidad, precio_unitario_momento)
-          values ($1, $2, $3, $4)
+          insert into items_cotizacion (id_cotizacion, id_producto, cantidad, precio_unitario_momento, descuento_porcentaje)
+          values ($1, $2, $3, $4, $5)
         `,
-        [quoteId, item.idProducto, item.cantidad, item.precioUnitarioMomento]
+        [quoteId, item.idProducto, item.cantidad, item.precioUnitarioMomento, item.descuentoPorcentaje]
       );
     }
 

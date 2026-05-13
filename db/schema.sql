@@ -29,13 +29,20 @@ CREATE TABLE IF NOT EXISTS cotizaciones (
   id_cliente BIGINT NOT NULL REFERENCES clientes(id),
   id_usuario BIGINT NOT NULL REFERENCES usuarios(id),
   fecha_emision TIMESTAMPTZ NOT NULL,
+  fecha_vencimiento TIMESTAMPTZ,
   moneda CHAR(3) NOT NULL CHECK (moneda IN ('ARS', 'USD')),
   tipo_cambio NUMERIC(18, 6) NOT NULL,
   subtotal NUMERIC(12, 2) NOT NULL,
   iva_porcentaje NUMERIC(5, 2) NOT NULL,
   descuento_global NUMERIC(12, 2) NOT NULL,
   total_final NUMERIC(12, 2) NOT NULL,
-  estado TEXT NOT NULL
+  estado TEXT NOT NULL,
+  notas TEXT,
+  plazo_entrega TEXT,
+  forma_pago TEXT,
+  lugar_entrega TEXT,
+  mantenimiento_oferta TEXT,
+  proxima_alerta TIMESTAMPTZ
 );
 
 CREATE TABLE IF NOT EXISTS items_cotizacion (
@@ -43,7 +50,8 @@ CREATE TABLE IF NOT EXISTS items_cotizacion (
   id_cotizacion BIGINT NOT NULL REFERENCES cotizaciones(id) ON DELETE CASCADE,
   id_producto BIGINT NOT NULL REFERENCES productos(id),
   cantidad INTEGER NOT NULL CHECK (cantidad > 0),
-  precio_unitario_momento NUMERIC(12, 2) NOT NULL
+  precio_unitario_momento NUMERIC(12, 2) NOT NULL,
+  descuento_porcentaje NUMERIC(5, 2) NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS seguimiento (
@@ -61,5 +69,14 @@ CREATE INDEX IF NOT EXISTS idx_items_cotizacion_id_cotizacion ON items_cotizacio
 CREATE INDEX IF NOT EXISTS idx_items_cotizacion_id_producto ON items_cotizacion(id_producto);
 CREATE INDEX IF NOT EXISTS idx_seguimiento_id_cotizacion ON seguimiento(id_cotizacion);
 
-COMMIT;
+ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS fecha_vencimiento TIMESTAMPTZ;
+ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS notas TEXT;
+ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS plazo_entrega TEXT;
+ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS forma_pago TEXT;
+ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS lugar_entrega TEXT;
+ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS mantenimiento_oferta TEXT;
+ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS proxima_alerta TIMESTAMPTZ;
 
+ALTER TABLE items_cotizacion ADD COLUMN IF NOT EXISTS descuento_porcentaje NUMERIC(5, 2) NOT NULL DEFAULT 0;
+
+COMMIT;

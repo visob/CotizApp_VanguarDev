@@ -5,7 +5,8 @@ body {
 
 body {
   margin: 0;
-  background: #0b1220;
-  color: #e7edf7;
+  background: radial-gradient(1200px 700px at 40% 0%, #f3f6fb 0%, #eef2f7 55%, #e9eef5 100%);
+  color: #111827;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji",
+    "Segoe UI Emoji";
 }
-

@@ -29,8 +29,42 @@ function parseQty(value: unknown) {
   return int > 0 ? int : null;
 }
 
-export async function listQuotesHandler(_req: Request, res: Response) {
-  const items = await listQuotes();
+function parseIsoDateOrNull(value: unknown) {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const d = new Date(trimmed);
+  return Number.isFinite(d.getTime()) ? d.toISOString() : null;
+}
+
+function parseTextOrNull(value: unknown) {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
+const allowedEstados = new Set([
+  "BORRADOR",
+  "EMITIDA",
+  "ENVIADA",
+  "POSPUESTA",
+  "PEND_REACTIVACION",
+  "CERRADA_PERDIDA",
+  "CERRADA_GANADA"
+]);
+
+export async function listQuotesHandler(req: Request, res: Response) {
+  const q = typeof req.query?.q === "string" ? req.query.q.trim() : "";
+  const estado = typeof req.query?.estado === "string" ? req.query.estado.trim() : "";
+  const from = typeof req.query?.from === "string" ? parseIsoDateOrNull(req.query.from) : null;
+  const to = typeof req.query?.to === "string" ? parseIsoDateOrNull(req.query.to) : null;
+
+  const items = await listQuotes({
+    q: q || undefined,
+    estado: estado || undefined,
+    from: from || undefined,
+    to: to || undefined
+  });
   res.json({ ok: true, items });
 }
 
@@ -47,17 +81,30 @@ export async function createQuoteHandler(req: Request, res: Response) {
     parsePercentToBasisPoints(req.body?.iva_porcentaje ?? process.env.DEFAULT_IVA ?? "21") ?? 2100n;
   const tipoCambio = parseDecimalString(req.body?.tipo_cambio ?? "1", 6);
   const returnPdf = req.body?.return_pdf === true;
+  const estadoRaw = typeof req.body?.estado === "string" ? req.body.estado.trim() : "";
+  const estado = allowedEstados.has(estadoRaw) ? estadoRaw : "EMITIDA";
+
+  const fechaEmisionIso = parseIsoDateOrNull(req.body?.fecha_emision) ?? new Date().toISOString();
+  const fechaVencimientoIso = parseIsoDateOrNull(req.body?.fecha_vencimiento);
+  const proximaAlertaIso = parseIsoDateOrNull(req.body?.proxima_alerta);
+  const notas = parseTextOrNull(req.body?.notas);
+  const plazoEntrega = parseTextOrNull(req.body?.plazo_entrega);
+  const formaPago = parseTextOrNull(req.body?.forma_pago);
+  const lugarEntrega = parseTextOrNull(req.body?.lugar_entrega);
+  const mantenimientoOferta = parseTextOrNull(req.body?.mantenimiento_oferta);
 
   const items = Array.isArray(req.body?.items) ? (req.body.items as unknown[]) : [];
   const parsedItems = items
     .map((it) => {
       const idProducto = parseId((it as any)?.id_producto);
       const cantidad = parseQty((it as any)?.cantidad);
-      return idProducto && cantidad ? { idProducto, cantidad } : null;
+      const descuentoBp =
+        parsePercentToBasisPoints((it as any)?.descuento_porcentaje ?? (it as any)?.descuento ?? "0") ?? 0n;
+      return idProducto && cantidad ? { idProducto, cantidad, descuentoBp } : null;
     })
-    .filter((x): x is { idProducto: number; cantidad: number } => x !== null);
+    .filter((x): x is { idProducto: number; cantidad: number; descuentoBp: bigint } => x !== null);
 
-  if (!idCliente || !moneda || parsedItems.length === 0 || !tipoCambio) {
+  if (!idCliente || !moneda || !tipoCambio) {
     res.status(400).json({ ok: false, error: "invalid_request" });
     return;
   }
@@ -69,8 +116,17 @@ export async function createQuoteHandler(req: Request, res: Response) {
   }
 
   const lineTotals: bigint[] = [];
-  const itemsToInsert: Array<{ idProducto: number; cantidad: number; precioUnitarioMomento: string }> =
-    [];
+  const itemsToInsert: Array<{
+    idProducto: number;
+    cantidad: number;
+    precioUnitarioMomento: string;
+    descuentoPorcentaje: string;
+  }> = [];
+
+  if (parsedItems.length === 0 && estado !== "BORRADOR") {
+    res.status(400).json({ ok: false, error: "items_requeridos" });
+    return;
+  }
 
   for (const it of parsedItems) {
     const product = await getProductById(it.idProducto);
@@ -86,12 +142,16 @@ export async function createQuoteHandler(req: Request, res: Response) {
       return;
     }
 
-    const lineTotal = unitCents * BigInt(it.cantidad);
-    lineTotals.push(lineTotal);
+    const grossLineTotal = unitCents * BigInt(it.cantidad);
+    const discountLineCents = (grossLineTotal * it.descuentoBp + 5000n) / 10000n;
+    const netLineTotal = grossLineTotal > discountLineCents ? grossLineTotal - discountLineCents : 0n;
+
+    lineTotals.push(netLineTotal);
     itemsToInsert.push({
       idProducto: it.idProducto,
       cantidad: it.cantidad,
-      precioUnitarioMomento: centsToMoneyString(unitCents)
+      precioUnitarioMomento: centsToMoneyString(unitCents),
+      descuentoPorcentaje: basisPointsToPercentString(it.descuentoBp)
     });
   }
 
@@ -104,14 +164,21 @@ export async function createQuoteHandler(req: Request, res: Response) {
   const quoteId = await createQuoteTransactional({
     idCliente,
     idUsuario: req.user.id,
-    fechaEmisionIso: new Date().toISOString(),
+    fechaEmisionIso,
+    fechaVencimientoIso: fechaVencimientoIso ?? null,
     moneda,
     tipoCambio,
     subtotal: centsToMoneyString(totals.subtotalCents),
     ivaPorcentaje: basisPointsToPercentString(ivaBp),
     descuentoGlobal: centsToMoneyString(descuentoCents),
     totalFinal: centsToMoneyString(totals.totalFinalCents),
-    estado: "EMITIDA",
+    estado,
+    notas,
+    plazoEntrega,
+    formaPago,
+    lugarEntrega,
+    mantenimientoOferta,
+    proximaAlertaIso,
     items: itemsToInsert
   });
 
@@ -131,6 +198,7 @@ export async function createQuoteHandler(req: Request, res: Response) {
     ok: true,
     id: quoteId,
     moneda,
+    estado,
     subtotal: centsToMoneyString(totals.subtotalCents),
     iva_porcentaje: basisPointsToPercentString(ivaBp),
     descuento_global: centsToMoneyString(descuentoCents),
