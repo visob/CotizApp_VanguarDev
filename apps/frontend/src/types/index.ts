@@ -15,6 +15,14 @@ export interface Client {
   contacto_principal?: string | null;
   cuit_tax_id?: string | null;
   clasificacion?: string | null;
+  email?: string | null;
+  telefono?: string | null;
+  direccion?: string | null;
+  codigo_postal?: string | null;
+  pais?: string | null;
+  provincia?: string | null;
+  estado: string;
+  ult_contacto?: string | null;
 }
 
 export interface Product {

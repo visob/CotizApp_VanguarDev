@@ -1,0 +1,167 @@
+.clientsTabs {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 20px;
+  margin-bottom: 20px;
+}
+
+.tabPill {
+  padding: 8px 20px;
+  border-radius: 999px;
+  background: rgba(17, 24, 39, 0.08);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  color: inherit;
+  transition: all 0.2s;
+}
+
+.tabPill:hover {
+  background: rgba(17, 24, 39, 0.12);
+}
+
+.tabPill--active {
+  background: #27272a;
+  color: #fff;
+}
+
+.tabPill--active:hover {
+  background: #18181b;
+}
+
+.tabPill--icon {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+}
+
+.toolbar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.searchBar {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background: rgba(17, 24, 39, 0.05);
+  border-radius: 12px;
+  padding: 0 14px;
+}
+
+.searchBar input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  height: 42px;
+  outline: none;
+  font-size: 14px;
+}
+
+.statusPill {
+  display: inline-flex;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.statusPill--activo {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.statusPill--baja {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* Detail View */
+.clientDetailGrid {
+  display: grid;
+  grid-template-columns: 340px 1fr 1fr;
+  gap: 20px;
+  align-items: stretch;
+}
+
+@media (max-width: 1100px) {
+  .clientDetailGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.clientCard {
+  background: rgba(226, 232, 240, 0.6);
+  border-radius: 20px;
+  padding: 24px;
+}
+
+.clientCard--baja {
+  background: #fce7f3;
+  color: #831843;
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.clientCard--empty {
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.clientInfoRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.clientAvatarLg {
+  width: 56px;
+  height: 56px;
+  border-radius: 999px;
+  background: #94a3b8;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.infoTitle {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.infoItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+
+.iconMuted {
+  opacity: 0.6;
+}
+
+.viewActions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.viewActions .btn--icon {
+  background: rgba(226, 232, 240, 0.6);
+  border: none;
+}
