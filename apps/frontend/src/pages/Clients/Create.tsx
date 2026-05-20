@@ -82,7 +82,7 @@ export function ClientCreate() {
               value={draft.nombre_empresa}
               onChange={(e) => setDraft((d) => ({ ...d, nombre_empresa: e.target.value }))}
               className="input"
-              style={{ background: "rgba(17,24,39,0.06)", border: "none" }}
+              style={{ background: "rgba(0,0,0,0.05)", border: "none" }}
             />
           </label>
           <label className="field">
@@ -91,7 +91,7 @@ export function ClientCreate() {
               value={draft.cuit_tax_id ?? ""}
               onChange={(e) => setDraft((d) => ({ ...d, cuit_tax_id: e.target.value }))}
               className="input"
-              style={{ background: "rgba(17,24,39,0.06)", border: "none" }}
+              style={{ background: "rgba(0,0,0,0.05)", border: "none" }}
             />
           </label>
           <label className="field">
@@ -101,7 +101,7 @@ export function ClientCreate() {
               onChange={(e) => setDraft((d) => ({ ...d, email: e.target.value }))}
               className="input"
               type="email"
-              style={{ background: "rgba(17,24,39,0.06)", border: "none" }}
+              style={{ background: "rgba(0,0,0,0.05)", border: "none" }}
             />
           </label>
           <label className="field">
@@ -110,7 +110,7 @@ export function ClientCreate() {
               value={draft.telefono ?? ""}
               onChange={(e) => setDraft((d) => ({ ...d, telefono: e.target.value }))}
               className="input"
-              style={{ background: "rgba(17,24,39,0.06)", border: "none" }}
+              style={{ background: "rgba(0,0,0,0.05)", border: "none" }}
             />
           </label>
           <label className="field">
@@ -119,7 +119,7 @@ export function ClientCreate() {
               value={draft.direccion ?? ""}
               onChange={(e) => setDraft((d) => ({ ...d, direccion: e.target.value }))}
               className="input"
-              style={{ background: "rgba(17,24,39,0.06)", border: "none" }}
+              style={{ background: "rgba(0,0,0,0.05)", border: "none" }}
             />
           </label>
           <label className="field">
@@ -128,7 +128,7 @@ export function ClientCreate() {
               value={draft.codigo_postal ?? ""}
               onChange={(e) => setDraft((d) => ({ ...d, codigo_postal: e.target.value }))}
               className="input"
-              style={{ background: "rgba(17,24,39,0.06)", border: "none" }}
+              style={{ background: "rgba(0,0,0,0.05)", border: "none" }}
             />
           </label>
           <label className="field">
@@ -137,7 +137,7 @@ export function ClientCreate() {
               value={draft.pais ?? ""}
               onChange={(e) => setDraft((d) => ({ ...d, pais: e.target.value }))}
               className="select"
-              style={{ background: "rgba(17,24,39,0.06)", border: "none" }}
+              style={{ background: "rgba(0,0,0,0.05)", border: "none" }}
             >
               <option value="Argentina">Argentina</option>
               <option value="Uruguay">Uruguay</option>
@@ -150,7 +150,7 @@ export function ClientCreate() {
               value={draft.provincia ?? ""}
               onChange={(e) => setDraft((d) => ({ ...d, provincia: e.target.value }))}
               className="select"
-              style={{ background: "rgba(17,24,39,0.06)", border: "none" }}
+              style={{ background: "rgba(0,0,0,0.05)", border: "none" }}
             >
               <option value="Buenos Aires">Buenos Aires</option>
               <option value="CABA">CABA</option>
@@ -164,7 +164,7 @@ export function ClientCreate() {
               value={draft.clasificacion ?? ""}
               onChange={(e) => setDraft((d) => ({ ...d, clasificacion: e.target.value }))}
               className="select"
-              style={{ background: "rgba(17,24,39,0.06)", border: "none" }}
+              style={{ background: "rgba(0,0,0,0.05)", border: "none" }}
             >
               <option value="Distribuidor">Distribuidor</option>
               <option value="Cliente final">Cliente final</option>
@@ -172,7 +172,7 @@ export function ClientCreate() {
           </label>
           
           <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "flex-end" }}>
-            <Button disabled={loading} onClick={() => void onSave()} style={{ background: "#18181b", color: "#fff", width: "100%", maxWidth: 200, border: "none" }}>
+            <Button disabled={loading} onClick={() => void onSave()} style={{ background: "var(--primary)", color: "var(--primary-text)", width: "100%", maxWidth: 200, border: "none" }}>
               Guardar
             </Button>
           </div>

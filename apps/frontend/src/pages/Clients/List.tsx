@@ -75,46 +75,47 @@ export function ClientsList() {
 
   return (
     <div className="page">
-      <div className="pageHeader">
-        <div>
-          <h1 className="pageTitle">Clientes</h1>
+      <div>
+        <div className="pageHeader">
+          <div>
+            <h1 className="pageTitle">Clientes</h1>
           <div className="pageSubtitle">Visualizá y administrá tu cartera de clientes</div>
         </div>
         <div className="actions">
-          <Button className="btn--ghost" style={{ background: "transparent", border: "1px solid var(--border)", color: "#111827", fontWeight: 600 }}>
+          <Button className="btn--ghost">
             <span style={{ marginRight: 8 }}>↑</span> Importar
           </Button>
-          <Button className="btn--ghost" style={{ background: "transparent", border: "1px solid var(--border)", color: "#111827", fontWeight: 600 }}>
+          <Button className="btn--ghost">
             <span style={{ marginRight: 8 }}>↓</span> Exportar lista
           </Button>
-          <Button onClick={() => navigate("/clients/new")} style={{ background: "#111827", color: "#fff", border: "none", fontWeight: 600 }}>
+          <Button onClick={() => navigate("/clients/new")} className="btn--primary">
             + Nuevo cliente
           </Button>
         </div>
       </div>
 
-      <div className="clientsTabs">
-        <button className={`tabPill ${activeTab === "Todos" ? "tabPill--active" : ""}`} onClick={() => setActiveTab("Todos")}>Todos</button>
-        <button className={`tabPill ${activeTab === "Activos" ? "tabPill--active" : ""}`} onClick={() => setActiveTab("Activos")}>Activos</button>
-        <button className={`tabPill ${activeTab === "Bajas" ? "tabPill--active" : ""}`} onClick={() => setActiveTab("Bajas")}>Bajas</button>
-        <button className="tabPill tabPill--icon">+</button>
+      <div className="pageTabs">
+        <button className={`pageTabPill ${activeTab === "Todos" ? "pageTabPill--active" : ""}`} onClick={() => setActiveTab("Todos")}>Todos</button>
+        <button className={`pageTabPill ${activeTab === "Activos" ? "pageTabPill--active" : ""}`} onClick={() => setActiveTab("Activos")}>Activos</button>
+        <button className={`pageTabPill ${activeTab === "Bajas" ? "pageTabPill--active" : ""}`} onClick={() => setActiveTab("Bajas")}>Bajas</button>
       </div>
 
-      <div className="toolbar">
-        <div className="searchBar">
-          <input
-            placeholder="Buscar..."
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-          />
-          <div style={{ opacity: 0.5 }}><SearchIcon /></div>
+      <div className="filterToolbar">
+        <input
+          className="searchBarInput"
+          placeholder="Buscar..."
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+        />
+        <div className="dateRange">
+          <input type="date" className="input" />
+          <span className="hint">—</span>
+          <input type="date" className="input" />
         </div>
-        <Button className="btn--ghost" style={{ background: "rgba(17,24,39,0.05)", border: "none", fontWeight: 500, display: "flex", gap: 8 }}>
-          <CalendarIcon /> 22 Abr, 2020 - 17 Ene, 2026
-        </Button>
-        <Button className="btn--ghost" style={{ background: "rgba(17,24,39,0.05)", border: "none", fontWeight: 500, display: "flex", gap: 8 }}>
-          <FilterIcon /> Filtrar
-        </Button>
+          <Button className="btn--ghost" style={{ display: "flex", gap: 8 }}>
+            <FilterIcon /> Filtrar
+          </Button>
+        </div>
       </div>
 
       {loading ? <div className="hint">Cargando...</div> : null}

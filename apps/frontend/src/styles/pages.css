@@ -5,18 +5,83 @@
 
 .pageHeader {
   display: flex;
-  align-items: baseline;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 16px;
+  margin-bottom: 15px;
 }
 
 .pageTitle {
-  margin: 0;
+  margin: 0 0 8px 0;
 }
 
 .pageSubtitle {
+  margin: 0;
   opacity: 0.8;
   font-size: 13px;
+}
+
+.pageTabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 5px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.pageTabPill {
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: var(--surface-soft);
+  color: inherit;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.pageTabPill--active {
+  background: var(--primary);
+  color: var(--primary-text);
+}
+
+.pageTabPill:not(.pageTabPill--active):hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.filterToolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.searchBarInput {
+  flex: 1;
+  min-width: 200px;
+  height: 42px;
+  padding: 0 16px 0 40px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-family: inherit;
+  font-size: 14px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='18' height='18' fill='none' stroke='%23777' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'%3E%3C/line%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: 12px center;
+  color: inherit;
+}
+
+.dateRange {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
 .row {

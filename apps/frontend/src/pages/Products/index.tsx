@@ -147,13 +147,14 @@ export default function ProductsPage() {
 
   return (
     <div className="page">
-      <div className="pageHeader">
-        <div>
-          <h1 className="pageTitle">Productos</h1>
+      <div>
+        <div className="pageHeader">
+          <div>
+            <h1 className="pageTitle">Productos</h1>
           <div className="pageSubtitle">Catálogo bimonetario (ARS / USD) y stock</div>
         </div>
-        <Button onClick={startCreate}>
-          Nuevo producto
+        <Button onClick={startCreate} className="btn--primary">
+          + Nuevo producto
         </Button>
       </div>
 
@@ -207,16 +208,17 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      <div className="row">
+      <div className="filterToolbar">
         <input
           placeholder="Filtrar (SKU o descripción...)"
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
-          className="input filterInput"
+          className="searchBarInput"
         />
-        <Button disabled={loading} onClick={() => void reload()}>
+        <Button disabled={loading} onClick={() => void reload()} className="btn--ghost">
           Actualizar
         </Button>
+      </div>
       </div>
 
       {error ? <div className="error">{error}</div> : null}

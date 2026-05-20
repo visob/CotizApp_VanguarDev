@@ -17,22 +17,22 @@
 .layoutMainCard {
   min-height: calc(100vh - 48px);
   border-radius: 28px;
-  background: radial-gradient(1200px 600px at 30% 30%, #f8fafc 0%, #f1f5f9 55%, #eef2f7 100%);
-  border: 1px solid rgba(17, 24, 39, 0.08);
+  background: #ffffff;
+  border: none;
   box-shadow: var(--shadow);
   padding: 26px;
 }
 
 .sidenav {
   transition: width 180ms ease;
-  background: rgba(255, 255, 255, 0.6);
-  border: 1px solid rgba(17, 24, 39, 0.08);
+  background: var(--dark-accent);
+  color: #ffffff;
+  border: none;
   border-radius: 26px;
-  box-shadow: 0 14px 40px rgba(15, 23, 42, 0.12);
+  box-shadow: var(--shadow);
   display: grid;
   grid-template-rows: auto 1fr auto;
   gap: 14px;
-  backdrop-filter: blur(10px);
   overflow: hidden;
 }
 
@@ -50,6 +50,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  padding-top: 10px;
+  padding-bottom: 38px;
 }
 
 .sidenavSection {
@@ -101,7 +103,9 @@
 }
 
 .sidenavItem[aria-current="page"] {
-  background: rgba(17, 24, 39, 0.08);
+  background: linear-gradient(125deg, #7d39eb 0%, #9a5cf5 30%, #642dbf 70%, #5a20b5 100%);
+  color: #ffffff;
+  box-shadow: 0 8px 24px rgba(125, 57, 235, 0.4);
 }
 
 .sidenavDivider {
@@ -121,8 +125,10 @@
   align-items: center;
   gap: 10px;
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.65);
-  border: 1px solid rgba(17, 24, 39, 0.08);
+  background: linear-gradient(125deg, #7d39eb 0%, #9a5cf5 30%, #642dbf 70%, #5a20b5 100%);
+  color: #ffffff;
+  box-shadow: 0 8px 24px rgba(125, 57, 235, 0.4);
+  border: none;
 }
 
 .sidenav--collapsed .userCard {
@@ -138,11 +144,11 @@
   width: 34px;
   height: 34px;
   border-radius: 999px;
-  background: rgba(17, 24, 39, 0.12);
+  background: rgba(255, 255, 255, 0.15);
   display: grid;
   place-items: center;
   font-weight: 700;
-  color: #111827;
+  color: #ffffff;
 }
 
 .userName {
@@ -160,12 +166,18 @@
   height: 34px;
   width: 34px;
   border-radius: 12px;
-  border: 1px solid rgba(17, 24, 39, 0.12);
-  background: transparent;
+  border: none;
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
   cursor: pointer;
   display: grid;
   place-items: center;
   padding: 0;
+  transition: background 0.15s ease;
+}
+
+.logoutBtn:hover {
+  background: rgba(255, 255, 255, 0.25);
 }
 
 .sidenav--collapsed .logoutBtn {

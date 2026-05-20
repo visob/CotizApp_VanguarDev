@@ -434,14 +434,15 @@ export default function QuotesPage() {
     <div className="page">
       {mode === "list" ? (
         <div className="stack">
-          <div className="pageHeader">
-            <div>
-              <h1 className="pageTitle">Cotizaciones</h1>
+          <div>
+            <div className="pageHeader">
+              <div>
+                <h1 className="pageTitle">Cotizaciones</h1>
               <div className="pageSubtitle">Creá presupuestos y hacé el seguimiento de tus ventas</div>
             </div>
-            <div className="row">
+            <div className="actions">
               <Button disabled={loading} onClick={downloadCsv} className="btn--ghost">
-                Exportar lista
+                <span style={{ marginRight: 8 }}>↓</span> Exportar lista
               </Button>
               <Button disabled={loading} onClick={startNew} className="btn--primary">
                 + Nueva cotización
@@ -449,7 +450,7 @@ export default function QuotesPage() {
             </div>
           </div>
 
-          <div className="quotesTabs">
+          <div className="pageTabs">
             {[
               { key: "todos", label: "Todos" },
               { key: "ultimas", label: "Últimas generadas" },
@@ -457,31 +458,32 @@ export default function QuotesPage() {
             ].map((t) => {
               const active = tab === (t.key as any);
               return (
-                <Button
+                <button
                   key={t.key}
                   onClick={() => {
                     setTab(t.key as any);
                     void reloadQuotes();
                   }}
-                  className={["btn--pill", active ? "btn--primary" : ""].filter(Boolean).join(" ")}
+                  className={`pageTabPill ${active ? "pageTabPill--active" : ""}`}
                 >
                   {t.label}
-                </Button>
+                </button>
               );
             })}
           </div>
 
-          <div className="quotesFilters">
-            <input placeholder="Buscar..." value={q} onChange={(e) => setQ(e.target.value)} className="input" />
+          <div className="filterToolbar">
+            <input placeholder="Buscar..." value={q} onChange={(e) => setQ(e.target.value)} className="searchBarInput" />
             <div className="dateRange">
               <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="input" />
               <span className="hint">—</span>
               <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="input" />
             </div>
-            <Button disabled={loading} onClick={() => void reloadQuotes()}>
-              Filtrar
+            <Button disabled={loading} onClick={() => void reloadQuotes()} className="btn--ghost" style={{ display: "flex", gap: 8 }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 4H20L14 12V19L10 21V12L4 4Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg> Filtrar
             </Button>
           </div>
+        </div>
 
           {error ? <div className="error">{error}</div> : null}
           {info ? <div className="success">{info}</div> : null}

@@ -36,7 +36,7 @@ export function SideNav(props: { onLogout: () => void; userLabel: string }) {
     { key: "support", label: "Soporte", icon: HelpIcon }
   ];
 
-  const iconColor = "#111827";
+  const iconColor = "currentColor";
 
   return (
     <aside
@@ -45,7 +45,7 @@ export function SideNav(props: { onLogout: () => void; userLabel: string }) {
       className={["sidenav", expanded ? "sidenav--expanded" : "sidenav--collapsed"].join(" ")}
     >
       <div className="sidenavLogo">
-        <ArrowMark size={42} color="#111827" />
+        <ArrowMark size={32} color={iconColor} />
       </div>
 
       <div className="sidenavSection">

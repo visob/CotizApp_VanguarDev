@@ -50,13 +50,13 @@ function LoginShell(props: { children: React.ReactNode }) {
       <div className="loginCard">
         <section className="loginLeft">
           <div className="loginLeftMark">
-            <ArrowMark size={220} color="#37426b" />
+            <ArrowMark size={220} color="rgba(255,255,255,0.25)" />
           </div>
         </section>
 
         <section className="loginRight">
           <div className="loginTopMark">
-            <ArrowMark size={46} color="#111827" />
+            <ArrowMark size={46} color="#2a2c2e" />
           </div>
           <div className="loginHeader">
             <h1 className="loginTitle">Iniciar Sesión</h1>

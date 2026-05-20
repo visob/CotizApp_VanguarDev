@@ -8,15 +8,19 @@
 }
 
 .tabPill {
-  padding: 8px 20px;
+  padding: 0 16px;
+  height: 36px;
   border-radius: 999px;
-  background: rgba(17, 24, 39, 0.08);
+  background: rgba(0, 0, 0, 0.06);
   font-size: 13px;
   font-weight: 600;
+  font-family: "DM Sans", sans-serif;
   cursor: pointer;
   border: none;
   color: inherit;
-  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  transition: background 0.15s ease;
 }
 
 .tabPill:hover {
@@ -24,12 +28,12 @@
 }
 
 .tabPill--active {
-  background: #27272a;
-  color: #fff;
+  background: var(--primary);
+  color: var(--primary-text);
 }
 
 .tabPill--active:hover {
-  background: #18181b;
+  background: var(--primary-hover);
 }
 
 .tabPill--icon {
@@ -97,7 +101,7 @@
 }
 
 .clientCard {
-  background: rgba(226, 232, 240, 0.6);
+  background: var(--surface-soft);
   border-radius: 20px;
   padding: 24px;
 }
@@ -129,7 +133,7 @@
   width: 56px;
   height: 56px;
   border-radius: 999px;
-  background: #94a3b8;
+  background: var(--primary);
   color: #fff;
   display: grid;
   place-items: center;
@@ -162,6 +166,6 @@
 }
 
 .viewActions .btn--icon {
-  background: rgba(226, 232, 240, 0.6);
+  background: var(--surface-soft);
   border: none;
 }
