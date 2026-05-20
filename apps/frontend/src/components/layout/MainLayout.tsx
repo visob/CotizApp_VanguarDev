@@ -32,7 +32,7 @@ export function SideNav(props: { onLogout: () => void; userLabel: string }) {
   ];
 
   const itemsBottom: NavItem[] = [
-    { key: "settings", label: "Configuración", icon: SettingsIcon },
+    { key: "settings", label: "Configuración", to: "/settings", icon: SettingsIcon },
     { key: "support", label: "Soporte", icon: HelpIcon }
   ];
 
@@ -83,13 +83,32 @@ export function SideNav(props: { onLogout: () => void; userLabel: string }) {
         <div className="sidenavDivider" />
 
         {itemsBottom.map((item) => {
-          return (
-            <div key={item.key} title={expanded ? undefined : item.label} className="sidenavItem sidenavItem--inactive">
+          const content = (
+            <>
               <div className="sidenavItemIcon">
                 <item.icon size={20} color={iconColor} />
               </div>
               {expanded ? <div className="sidenavItemLabel">{item.label}</div> : null}
               {expanded ? <div className="sidenavItemArrow">&rsaquo;</div> : null}
+            </>
+          );
+
+          return item.to ? (
+            <NavLink
+              key={item.key}
+              to={item.to}
+              title={expanded ? undefined : item.label}
+              className="sidenavItem"
+            >
+              {content}
+            </NavLink>
+          ) : (
+            <div
+              key={item.key}
+              title={expanded ? undefined : item.label}
+              className="sidenavItem sidenavItem--inactive"
+            >
+              {content}
             </div>
           );
         })}

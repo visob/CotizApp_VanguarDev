@@ -1,12 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../../components/common/Button";
 import * as productService from "../../services/product.service";
+import * as configService from "../../services/config.service";
 import type { Product } from "../../types";
 import { ReturnIcon } from "../../components/common/Icons";
 import "../../styles/products.css";
-
-const EXCHANGE_RATE = 1000; // 1 USD = 1000 ARS
 
 type ProductDraft = Omit<Product, "id">;
 
@@ -28,11 +27,26 @@ export function ProductCreate() {
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
+  const [exchangeRate, setExchangeRate] = useState(1000); // Default fallback
+
+  useEffect(() => {
+    async function fetchRate() {
+      const rateConfig = await configService.getConfig("exchange_rate");
+      if (rateConfig) {
+        const rate = parseFloat(rateConfig.valor);
+        if (!isNaN(rate) && rate > 0) {
+          setExchangeRate(rate);
+        }
+      }
+    }
+    void fetchRate();
+  }, []);
+
   function handleUsdChange(value: string) {
     const usdNum = parseFloat(value.replace(",", "."));
     let arsVal = draft.precio_ars;
     if (!isNaN(usdNum)) {
-      arsVal = (usdNum * EXCHANGE_RATE).toString();
+      arsVal = (usdNum * exchangeRate).toString();
     } else if (value === "") {
       arsVal = "";
     }
@@ -43,7 +57,7 @@ export function ProductCreate() {
     const arsNum = parseFloat(value.replace(",", "."));
     let usdVal = draft.precio_usd;
     if (!isNaN(arsNum)) {
-      usdVal = (arsNum / EXCHANGE_RATE).toString();
+      usdVal = (arsNum / exchangeRate).toString();
     } else if (value === "") {
       usdVal = "";
     }
@@ -161,7 +175,7 @@ export function ProductCreate() {
                 />
               </label>
               <label className="field flex-1">
-                <span className="label">Precio ARS (Tasa $1000)</span>
+                <span className="label">Precio ARS (Tasa ${exchangeRate})</span>
                 <input
                   value={draft.precio_ars}
                   onChange={(e) => handleArsChange(e.target.value)}

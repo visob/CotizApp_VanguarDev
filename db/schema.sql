@@ -69,6 +69,11 @@ CREATE INDEX IF NOT EXISTS idx_items_cotizacion_id_cotizacion ON items_cotizacio
 CREATE INDEX IF NOT EXISTS idx_items_cotizacion_id_producto ON items_cotizacion(id_producto);
 CREATE INDEX IF NOT EXISTS idx_seguimiento_id_cotizacion ON seguimiento(id_cotizacion);
 
+CREATE TABLE IF NOT EXISTS configuraciones (
+  clave TEXT PRIMARY KEY,
+  valor TEXT NOT NULL
+);
+
 ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS fecha_vencimiento TIMESTAMPTZ;
 ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS notas TEXT;
 ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS plazo_entrega TEXT;

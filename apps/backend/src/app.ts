@@ -7,6 +7,7 @@ import { authRouter } from "./routes/auth.routes.js";
 import { clientRouter } from "./routes/client.routes.js";
 import { productRouter } from "./routes/product.routes.js";
 import { quoteRouter } from "./routes/quote.routes.js";
+import { configRouter } from "./routes/config.routes.js";
 
 export const app = express();
 
@@ -60,4 +61,10 @@ app.use(
   authMiddleware,
   roleMiddleware(["Admin", "Vendedor", "Gerente"]),
   quoteRouter
+);
+app.use(
+  "/api/config",
+  authMiddleware,
+  roleMiddleware(["Admin", "Gerente"]),
+  configRouter
 );

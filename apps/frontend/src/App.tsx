@@ -6,6 +6,7 @@ import DashboardPage from "./pages/Dashboard";
 import LoginPage from "./pages/Login";
 import ProductsPage from "./pages/Products";
 import QuotesPage from "./pages/Quotes";
+import SettingsPage from "./pages/Settings";
 
 export default function App() {
   const { token } = useAuth();
@@ -26,6 +27,7 @@ export default function App() {
         <Route path="/clients/*" element={<ClientsPage />} />
         <Route path="/products/*" element={<ProductsPage />} />
         <Route path="/quotes" element={<QuotesPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </MainLayout>
