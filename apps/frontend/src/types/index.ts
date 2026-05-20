@@ -31,5 +31,9 @@ export interface Product {
   precio_ars: string;
   precio_usd: string;
   stock: number;
+  sku?: string | null;
+  descripcion?: string | null;
+  estado?: string;
+  garantia?: string | null;
 }
 
