@@ -12,8 +12,23 @@ import { configRouter } from "./routes/config.routes.js";
 export const app = express();
 
 app.use((req, res, next) => {
-  const origin = process.env.FRONTEND_ORIGIN ?? "http://localhost:5173";
-  res.setHeader("Access-Control-Allow-Origin", origin);
+  const requestOrigin = req.headers.origin;
+  const allowedOrigins = (process.env.FRONTEND_ORIGIN ?? "")
+    .split(",")
+    .map((o) => o.trim())
+    .filter(Boolean);
+
+  if (requestOrigin) {
+    const allowLocalDevOrigin =
+      allowedOrigins.length === 0 &&
+      (requestOrigin.startsWith("http://localhost:") ||
+        requestOrigin.startsWith("http://127.0.0.1:"));
+
+    if (allowedOrigins.includes(requestOrigin) || allowLocalDevOrigin) {
+      res.setHeader("Access-Control-Allow-Origin", requestOrigin);
+      res.setHeader("Vary", "Origin");
+    }
+  }
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
   if (req.method === "OPTIONS") {

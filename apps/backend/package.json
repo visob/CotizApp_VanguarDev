@@ -7,6 +7,7 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
+    "migrate": "tsx src/scripts/migrate.ts",
     "seed:admin": "tsx src/scripts/seedAdmin.ts"
   },
   "dependencies": {
@@ -14,13 +15,13 @@
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
     "pdfkit": "^0.17.2",
-    "pg": "^8.16.0"
+    "pg": "^8.21.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.3",
     "@types/jsonwebtoken": "^9.0.6",
-    "@types/pdfkit": "^0.13.9",
     "@types/node": "^24.0.0",
+    "@types/pdfkit": "^0.13.9",
     "@types/pg": "^8.15.4",
     "tsx": "^4.20.0",
     "typescript": "^5.8.3"

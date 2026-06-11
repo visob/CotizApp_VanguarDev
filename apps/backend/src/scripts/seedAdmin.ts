@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { promisify } from "node:util";
+import { inspect, promisify } from "node:util";
 import { pool } from "../config/database.js";
 
 const scryptAsync = promisify(crypto.scrypt);
@@ -36,9 +36,11 @@ async function main() {
 }
 
 main().catch(async (error) => {
-  process.stderr.write(
-    `Seed ERROR: ${error instanceof Error ? error.message : "unknown_error"}\n`
-  );
+  const message =
+    error instanceof Error
+      ? `${error.name}: ${error.message || "(sin mensaje)"}\n${error.stack ?? ""}`
+      : inspect(error, { depth: 6, colors: false });
+  process.stderr.write(`Seed ERROR:\n${message}\n`);
   try {
     await pool.end();
   } catch {
