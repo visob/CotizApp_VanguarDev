@@ -20,3 +20,29 @@
   border-radius: 20px;
   padding: 24px;
 }
+
+.securityBadge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.securityBadge--locked {
+  background: rgba(185, 28, 28, 0.12);
+  color: #991b1b;
+}
+
+.securityBadge--warning {
+  background: rgba(245, 158, 11, 0.16);
+  color: #92400e;
+}
+
+.securityBadge--ok {
+  background: rgba(22, 163, 74, 0.12);
+  color: #166534;
+}

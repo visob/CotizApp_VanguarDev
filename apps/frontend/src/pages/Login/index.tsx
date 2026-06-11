@@ -34,8 +34,13 @@ function validateLogin(values: LoginValues): LoginFieldErrors {
 }
 
 function getLoginErrorMessage(err: unknown) {
-  const anyErr = err as Error & { status?: number };
+  const anyErr = err as Error & { status?: number; data?: { lockUntilMs?: number } };
   if (anyErr?.status === 423) {
+    const lockUntilMs = anyErr.data?.lockUntilMs;
+    if (typeof lockUntilMs === "number" && Number.isFinite(lockUntilMs)) {
+      const mins = Math.max(1, Math.ceil((lockUntilMs - Date.now()) / 60_000));
+      return `Cuenta bloqueada temporalmente. Intentá de nuevo en ${mins} minuto${mins === 1 ? "" : "s"}`;
+    }
     return "Cuenta bloqueada temporalmente por intentos fallidos";
   }
   if (anyErr?.status === 401) {

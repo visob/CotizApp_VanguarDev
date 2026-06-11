@@ -2,19 +2,12 @@ import crypto from "node:crypto";
 import { promisify } from "node:util";
 import jwt from "jsonwebtoken";
 import { authConfig } from "../config/auth.js";
-import { getUserByEmail } from "../models/user.model.js";
+import { getUserByEmail, setUserLockState } from "../models/user.model.js";
 import type { AuthUser } from "../types/auth.js";
 import type { UserRole } from "../types/index.js";
 import { isRole } from "../utils/access.js";
 
 const scryptAsync = promisify(crypto.scrypt);
-
-type LockState = {
-  failedAttempts: number;
-  lockUntilMs: number;
-};
-
-const lockByEmail = new Map<string, LockState>();
 
 function nowMs() {
   return Date.now();
@@ -41,38 +34,50 @@ async function verifyPassword(password: string, passwordHash: string) {
   return crypto.timingSafeEqual(derived, expected);
 }
 
-function getLockState(email: string) {
-  const current = lockByEmail.get(email);
-  if (!current) {
+function getLockUntilMs(lockUntil: string | null) {
+  if (!lockUntil) {
     return null;
   }
-  if (current.lockUntilMs > nowMs()) {
-    return current;
-  }
-  lockByEmail.delete(email);
-  return null;
+  const ts = new Date(lockUntil).getTime();
+  return Number.isFinite(ts) ? ts : null;
 }
 
-function registerFailedAttempt(email: string) {
-  const current = lockByEmail.get(email) ?? {
-    failedAttempts: 0,
-    lockUntilMs: 0
-  };
+async function registerFailedAttempt(input: {
+  userId: number;
+  currentFailedAttempts: number;
+  currentLockLevel: number;
+}) {
+  const failedAttempts = input.currentFailedAttempts + 1;
+  if (failedAttempts < authConfig.maxFailedAttempts) {
+    await setUserLockState(input.userId, {
+      failedLoginAttempts: failedAttempts,
+      lockUntil: null,
+      lockLevel: input.currentLockLevel
+    });
+    return { locked: false as const };
+  }
 
-  const failedAttempts = current.failedAttempts + 1;
-  const shouldLock = failedAttempts >= authConfig.maxFailedAttempts;
-  const lockUntilMs = shouldLock ? nowMs() + authConfig.lockMinutes * 60_000 : 0;
-
-  lockByEmail.set(email, { failedAttempts, lockUntilMs });
-
+  const nextLockLevel = input.currentLockLevel + 1;
+  const lockMinutes =
+    authConfig.lockMinutes + Math.max(0, nextLockLevel - 1) * authConfig.lockIncrementMinutes;
+  const lockUntilMs = nowMs() + lockMinutes * 60_000;
+  await setUserLockState(input.userId, {
+    failedLoginAttempts: 0,
+    lockUntil: new Date(lockUntilMs).toISOString(),
+    lockLevel: nextLockLevel
+  });
   return {
-    locked: shouldLock,
+    locked: true as const,
     lockUntilMs
   };
 }
 
-function clearLock(email: string) {
-  lockByEmail.delete(email);
+async function clearLock(userId: number) {
+  await setUserLockState(userId, {
+    failedLoginAttempts: 0,
+    lockUntil: null,
+    lockLevel: 0
+  });
 }
 
 export type LoginResult =
@@ -93,15 +98,19 @@ export async function loginWithPassword(input: {
 }): Promise<LoginResult> {
   const email = normalizeEmail(input.email);
 
-  const lock = getLockState(email);
-  if (lock) {
-    return { ok: false, reason: "locked", lockUntilMs: lock.lockUntilMs };
-  }
-
   const dbUser = await getUserByEmail(email);
   if (!dbUser) {
-    registerFailedAttempt(email);
     return { ok: false, reason: "invalid_credentials" };
+  }
+
+  const userId = Number(dbUser.id);
+  if (!Number.isFinite(userId)) {
+    return { ok: false, reason: "invalid_credentials" };
+  }
+
+  const lockUntilMs = getLockUntilMs(dbUser.lock_until);
+  if (lockUntilMs && lockUntilMs > nowMs()) {
+    return { ok: false, reason: "locked", lockUntilMs };
   }
 
   if (!dbUser.activo || dbUser.empresa_activa === false) {
@@ -112,17 +121,21 @@ export async function loginWithPassword(input: {
 
   const passwordOk = await verifyPassword(input.password, dbUser.password_hash);
   if (!passwordOk) {
-    const { locked, lockUntilMs } = registerFailedAttempt(email);
+    const { locked, lockUntilMs } = await registerFailedAttempt({
+      userId,
+      currentFailedAttempts: dbUser.failed_login_attempts,
+      currentLockLevel: dbUser.lock_level
+    });
     if (locked) {
       return { ok: false, reason: "locked", lockUntilMs };
     }
     return { ok: false, reason: "invalid_credentials" };
   }
 
-  clearLock(email);
+  await clearLock(userId);
 
   const user: AuthUser = {
-    id: Number(dbUser.id),
+    id: userId,
     empresaId: dbUser.id_empresa === null ? null : Number(dbUser.id_empresa),
     empresaNombre: dbUser.empresa_nombre,
     nombre: dbUser.nombre,

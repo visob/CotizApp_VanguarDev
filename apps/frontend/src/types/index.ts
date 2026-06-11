@@ -27,6 +27,9 @@ export interface ManagedUser {
   email: string;
   rol: UserRole;
   activo: boolean;
+  failed_login_attempts: number;
+  lock_until: string | null;
+  lock_level: number;
 }
 
 export interface Client {

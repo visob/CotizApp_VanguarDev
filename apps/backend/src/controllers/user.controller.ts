@@ -7,6 +7,7 @@ import {
   deactivateUser,
   getUserById,
   listUsers,
+  unlockUser,
   updateUser
 } from "../models/user.model.js";
 import type { UserRole } from "../types/index.js";
@@ -272,4 +273,42 @@ export async function deactivateUserHandler(req: Request, res: Response) {
   }
 
   res.json({ ok: true });
+}
+
+export async function unlockUserHandler(req: Request, res: Response) {
+  if (!req.user) {
+    res.status(401).json({ ok: false, error: "unauthorized" });
+    return;
+  }
+
+  const id = parseNumericId(req.params.id);
+  if (!id) {
+    res.status(400).json({ ok: false, error: "invalid_id" });
+    return;
+  }
+
+  const current = await getUserById(id, isSuperAdmin(req.user) ? undefined : req.user.empresaId);
+  if (!current) {
+    res.status(404).json({ ok: false, error: "not_found" });
+    return;
+  }
+  if (req.user.rol === "Admin" && current.rol === "SuperAdmin") {
+    res.status(403).json({ ok: false, error: "forbidden_target" });
+    return;
+  }
+
+  const item = await unlockUser(id, isSuperAdmin(req.user) ? undefined : req.user.empresaId);
+  if (!item) {
+    res.status(404).json({ ok: false, error: "not_found" });
+    return;
+  }
+
+  res.json({
+    ok: true,
+    item: {
+      ...item,
+      id: Number(item.id),
+      id_empresa: item.id_empresa === null ? null : Number(item.id_empresa)
+    }
+  });
 }

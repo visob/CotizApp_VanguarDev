@@ -10,6 +10,9 @@ export type DbUser = {
   password_hash: string;
   rol: string;
   activo: boolean;
+  failed_login_attempts: number;
+  lock_until: string | null;
+  lock_level: number;
 };
 
 export async function getUserByEmail(email: string) {
@@ -24,7 +27,10 @@ export async function getUserByEmail(email: string) {
         u.email,
         u.password_hash,
         u.rol,
-        u.activo
+        u.activo,
+        u.failed_login_attempts,
+        u.lock_until,
+        u.lock_level
       from usuarios u
       left join empresas e on e.id = u.id_empresa
       where lower(u.email) = lower($1)
@@ -61,7 +67,10 @@ export async function listUsers(input?: { companyId?: number | null; includeInac
         u.nombre,
         u.email,
         u.rol,
-        u.activo
+        u.activo,
+        u.failed_login_attempts,
+        u.lock_until,
+        u.lock_level
       from usuarios u
       left join empresas e on e.id = u.id_empresa
       ${whereSql}
@@ -89,7 +98,10 @@ export async function getUserById(id: number, companyId?: number | null) {
         u.nombre,
         u.email,
         u.rol,
-        u.activo
+        u.activo,
+        u.failed_login_attempts,
+        u.lock_until,
+        u.lock_level
       from usuarios u
       left join empresas e on e.id = u.id_empresa
       where u.id = $1
@@ -111,8 +123,8 @@ export async function createUser(input: {
 }) {
   const result = await pool.query<UserRow>(
     `
-      insert into usuarios (id_empresa, nombre, email, password_hash, rol, activo)
-      values ($1, $2, lower($3), $4, $5, $6)
+      insert into usuarios (id_empresa, nombre, email, password_hash, rol, activo, failed_login_attempts, lock_until, lock_level)
+      values ($1, $2, lower($3), $4, $5, $6, 0, null, 0)
       returning
         id,
         id_empresa,
@@ -120,7 +132,10 @@ export async function createUser(input: {
         nombre,
         email,
         rol,
-        activo
+        activo,
+        failed_login_attempts,
+        lock_until,
+        lock_level
     `,
     [input.empresaId, input.nombre, input.email, input.passwordHash, input.rol, input.activo ?? true]
   );
@@ -136,6 +151,9 @@ export async function updateUser(
     passwordHash?: string;
     rol?: string;
     activo?: boolean;
+    failedLoginAttempts?: number;
+    lockUntil?: string | null;
+    lockLevel?: number;
   },
   companyId?: number | null
 ) {
@@ -167,6 +185,18 @@ export async function updateUser(
     updates.push(`activo = $${idx++}`);
     values.push(input.activo);
   }
+  if (input.failedLoginAttempts !== undefined) {
+    updates.push(`failed_login_attempts = $${idx++}`);
+    values.push(input.failedLoginAttempts);
+  }
+  if (input.lockUntil !== undefined) {
+    updates.push(`lock_until = $${idx++}`);
+    values.push(input.lockUntil);
+  }
+  if (input.lockLevel !== undefined) {
+    updates.push(`lock_level = $${idx++}`);
+    values.push(input.lockLevel);
+  }
 
   if (updates.length === 0) {
     return getUserById(id, companyId);
@@ -191,7 +221,10 @@ export async function updateUser(
         nombre,
         email,
         rol,
-        activo
+        activo,
+        failed_login_attempts,
+        lock_until,
+        lock_level
     `,
     values
   );
@@ -211,4 +244,33 @@ export async function deactivateUser(id: number, companyId?: number | null) {
     values
   );
   return (result.rows[0]?.id ?? null) !== null;
+}
+
+export async function setUserLockState(
+  id: number,
+  input: { failedLoginAttempts: number; lockUntil: string | null; lockLevel: number },
+  companyId?: number | null
+) {
+  return updateUser(
+    id,
+    {
+      failedLoginAttempts: input.failedLoginAttempts,
+      lockUntil: input.lockUntil,
+      lockLevel: input.lockLevel
+    },
+    companyId
+  );
+}
+
+export async function unlockUser(id: number, companyId?: number | null) {
+  const item = await updateUser(
+    id,
+    {
+      failedLoginAttempts: 0,
+      lockUntil: null,
+      lockLevel: 0
+    },
+    companyId
+  );
+  return item;
 }

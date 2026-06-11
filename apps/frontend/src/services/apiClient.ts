@@ -39,9 +39,19 @@ export async function apiRequest<T>(input: {
       window.location.href = "/login";
       throw new Error("unauthorized");
     }
-    const text = await response.text().catch(() => "");
-    const error = new Error(text || `HTTP ${response.status}`);
-    (error as Error & { status?: number }).status = response.status;
+    const contentType = response.headers.get("content-type") ?? "";
+    const errorBody = contentType.includes("application/json")
+      ? await response.json().catch(() => null)
+      : await response.text().catch(() => "");
+    const message =
+      typeof errorBody === "string"
+        ? errorBody
+        : typeof errorBody?.error === "string"
+          ? errorBody.error
+          : `HTTP ${response.status}`;
+    const error = new Error(message);
+    (error as Error & { status?: number; data?: unknown }).status = response.status;
+    (error as Error & { status?: number; data?: unknown }).data = errorBody;
     throw error;
   }
 
@@ -84,9 +94,19 @@ export async function apiRequestBlob(input: {
       window.location.href = "/login";
       throw new Error("unauthorized");
     }
-    const text = await response.text().catch(() => "");
-    const error = new Error(text || `HTTP ${response.status}`);
-    (error as Error & { status?: number }).status = response.status;
+    const contentType = response.headers.get("content-type") ?? "";
+    const errorBody = contentType.includes("application/json")
+      ? await response.json().catch(() => null)
+      : await response.text().catch(() => "");
+    const message =
+      typeof errorBody === "string"
+        ? errorBody
+        : typeof errorBody?.error === "string"
+          ? errorBody.error
+          : `HTTP ${response.status}`;
+    const error = new Error(message);
+    (error as Error & { status?: number; data?: unknown }).status = response.status;
+    (error as Error & { status?: number; data?: unknown }).data = errorBody;
     throw error;
   }
 

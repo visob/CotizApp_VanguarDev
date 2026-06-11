@@ -54,3 +54,10 @@ export async function deactivateUser(id: number) {
   });
 }
 
+export async function unlockUser(id: number) {
+  const result = await apiRequest<{ ok: true; item: ManagedUser }>({
+    path: `/api/users/${id}/unlock`,
+    method: "PATCH"
+  });
+  return result.item;
+}

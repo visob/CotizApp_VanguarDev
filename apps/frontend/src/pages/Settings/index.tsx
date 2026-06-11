@@ -23,6 +23,42 @@ function roleLabel(value: UserRole) {
   return "Vendedor";
 }
 
+function getUserLockStatus(user: ManagedUser) {
+  if (user.lock_until) {
+    const lockUntilMs = new Date(user.lock_until).getTime();
+    if (Number.isFinite(lockUntilMs) && lockUntilMs > Date.now()) {
+      const remainingMinutes = Math.max(1, Math.ceil((lockUntilMs - Date.now()) / 60_000));
+      return {
+        locked: true,
+        tone: "locked" as const,
+        label: `Bloqueado · nivel ${Math.max(1, user.lock_level)} · ${remainingMinutes} min restantes`
+      };
+    }
+  }
+
+  if (user.failed_login_attempts > 0) {
+    return {
+      locked: false,
+      tone: "warning" as const,
+      label: `${user.failed_login_attempts} intento${user.failed_login_attempts === 1 ? "" : "s"} fallido${user.failed_login_attempts === 1 ? "" : "s"} · nivel ${user.lock_level}`
+    };
+  }
+
+  if (user.lock_level > 0) {
+    return {
+      locked: false,
+      tone: "ok" as const,
+      label: `Sin bloqueo activo · nivel ${user.lock_level}`
+    };
+  }
+
+  return {
+    locked: false,
+    tone: "ok" as const,
+    label: "Sin bloqueos"
+  };
+}
+
 type TabKey = "general" | "users" | "companies";
 
 export default function SettingsPage() {
@@ -341,6 +377,20 @@ export default function SettingsPage() {
     }
   }
 
+  async function handleUnlockUser(id: number) {
+    if (!window.confirm("¿Desbloquear usuario y resetear intentos fallidos?")) return;
+    setUserSaving(true);
+    setUsersError(null);
+    try {
+      await userAdminService.unlockUser(id);
+      await loadUsers();
+    } catch (err) {
+      setUsersError(err instanceof Error ? err.message : "error_desbloqueando_usuario");
+    } finally {
+      setUserSaving(false);
+    }
+  }
+
   if (loading && !isSuperAdmin) {
     return (
       <div className="page">
@@ -651,38 +701,66 @@ export default function SettingsPage() {
                   <th>Rol</th>
                   <th>Empresa</th>
                   <th>Estado</th>
+                  <th>Seguridad</th>
                   <th className="nowrap">Acciones</th>
                 </tr>
               </thead>
               <tbody>
-                {users.map((u) => (
-                  <tr key={u.id}>
-                    <td>{u.nombre}</td>
-                    <td className="cellMuted">{u.email}</td>
-                    <td>{roleLabel(u.rol)}</td>
-                    <td className="cellMuted">{u.empresa_nombre ?? "-"}</td>
-                    <td>{u.activo ? "Activo" : "Inactivo"}</td>
-                    <td className="nowrap">
-                      <div className="row" style={{ gap: 8 }}>
-                        <Button className="btn--sm" onClick={() => openEditUser(u)} disabled={userSaving}>
-                          Editar
-                        </Button>
-                        {u.activo ? (
-                          <Button
-                            className="btn--sm btn--danger"
-                            onClick={() => void handleDeactivateUser(u.id)}
-                            disabled={userSaving}
-                          >
-                            Desactivar
+                {users.map((u) => {
+                  const lockStatus = getUserLockStatus(u);
+                  const canUnlock = lockStatus.locked || u.failed_login_attempts > 0 || u.lock_level > 0;
+                  return (
+                    <tr key={u.id}>
+                      <td>{u.nombre}</td>
+                      <td className="cellMuted">{u.email}</td>
+                      <td>{roleLabel(u.rol)}</td>
+                      <td className="cellMuted">{u.empresa_nombre ?? "-"}</td>
+                      <td>{u.activo ? "Activo" : "Inactivo"}</td>
+                      <td>
+                        <span
+                          className={[
+                            "securityBadge",
+                            lockStatus.tone === "locked"
+                              ? "securityBadge--locked"
+                              : lockStatus.tone === "warning"
+                                ? "securityBadge--warning"
+                                : "securityBadge--ok"
+                          ].join(" ")}
+                        >
+                          {lockStatus.label}
+                        </span>
+                      </td>
+                      <td className="nowrap">
+                        <div className="row" style={{ gap: 8 }}>
+                          <Button className="btn--sm" onClick={() => openEditUser(u)} disabled={userSaving}>
+                            Editar
                           </Button>
-                        ) : null}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                          {canUnlock ? (
+                            <Button
+                              className="btn--sm"
+                              onClick={() => void handleUnlockUser(u.id)}
+                              disabled={userSaving}
+                            >
+                              Desbloquear
+                            </Button>
+                          ) : null}
+                          {u.activo ? (
+                            <Button
+                              className="btn--sm btn--danger"
+                              onClick={() => void handleDeactivateUser(u.id)}
+                              disabled={userSaving}
+                            >
+                              Desactivar
+                            </Button>
+                          ) : null}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
                 {!users.length && !usersLoading ? (
                   <tr>
-                    <td className="cellEmpty" colSpan={6}>
+                    <td className="cellEmpty" colSpan={7}>
                       No hay usuarios para mostrar.
                     </td>
                   </tr>

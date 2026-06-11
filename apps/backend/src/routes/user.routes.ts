@@ -4,6 +4,7 @@ import {
   deactivateUserHandler,
   getUserHandler,
   listUsersHandler,
+  unlockUserHandler,
   updateUserHandler
 } from "../controllers/user.controller.js";
 
@@ -14,3 +15,4 @@ userRouter.get("/:id", getUserHandler);
 userRouter.post("/", createUserHandler);
 userRouter.put("/:id", updateUserHandler);
 userRouter.patch("/:id/deactivate", deactivateUserHandler);
+userRouter.patch("/:id/unlock", unlockUserHandler);
