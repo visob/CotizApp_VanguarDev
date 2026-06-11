@@ -6,6 +6,19 @@ export type ConfigRow = {
   valor: string;
 };
 
+export type CatalogOptionType = "forma_pago" | "lugar_entrega" | "tipo_iva";
+
+export type CatalogOptionRow = {
+  id: string | number;
+  id_empresa: string | number;
+  tipo: CatalogOptionType;
+  label: string;
+  value: string;
+  activo: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
 export async function getConfig(clave: string, companyId: number) {
   const result = await pool.query<ConfigRow>(
     "SELECT id_empresa, clave, valor FROM configuraciones WHERE id_empresa = $1 AND clave = $2 LIMIT 1",
@@ -25,4 +38,118 @@ export async function setConfig(companyId: number, clave: string, valor: string)
     [companyId, clave, valor]
   );
   return result.rows[0];
+}
+
+export async function listCatalogOptions(input: {
+  companyId: number;
+  tipo?: CatalogOptionType;
+  includeInactive?: boolean;
+}) {
+  const values: unknown[] = [input.companyId];
+  const where = ["id_empresa = $1"];
+
+  if (input.tipo) {
+    values.push(input.tipo);
+    where.push(`tipo = $${values.length}`);
+  }
+
+  if (!input.includeInactive) {
+    where.push("activo = true");
+  }
+
+  const result = await pool.query<CatalogOptionRow>(
+    `
+      select id, id_empresa, tipo, label, value, activo, created_at, updated_at
+      from empresa_catalog_options
+      where ${where.join(" and ")}
+      order by tipo asc, label asc, id asc
+    `,
+    values
+  );
+  return result.rows;
+}
+
+export async function getCatalogOptionById(id: number, companyId: number) {
+  const result = await pool.query<CatalogOptionRow>(
+    `
+      select id, id_empresa, tipo, label, value, activo, created_at, updated_at
+      from empresa_catalog_options
+      where id = $1 and id_empresa = $2
+      limit 1
+    `,
+    [id, companyId]
+  );
+  return result.rows[0] ?? null;
+}
+
+export async function getActiveCatalogOptionByValue(
+  companyId: number,
+  tipo: CatalogOptionType,
+  value: string
+) {
+  const result = await pool.query<CatalogOptionRow>(
+    `
+      select id, id_empresa, tipo, label, value, activo, created_at, updated_at
+      from empresa_catalog_options
+      where id_empresa = $1 and tipo = $2 and value = $3 and activo = true
+      limit 1
+    `,
+    [companyId, tipo, value]
+  );
+  return result.rows[0] ?? null;
+}
+
+export async function createCatalogOption(input: {
+  companyId: number;
+  tipo: CatalogOptionType;
+  label: string;
+  value: string;
+}) {
+  const result = await pool.query<CatalogOptionRow>(
+    `
+      insert into empresa_catalog_options (id_empresa, tipo, label, value, activo)
+      values ($1, $2, $3, $4, true)
+      returning id, id_empresa, tipo, label, value, activo, created_at, updated_at
+    `,
+    [input.companyId, input.tipo, input.label, input.value]
+  );
+  return result.rows[0];
+}
+
+export async function updateCatalogOption(
+  id: number,
+  companyId: number,
+  input: { label?: string; value?: string; activo?: boolean }
+) {
+  const updates: string[] = [];
+  const values: unknown[] = [];
+  let idx = 1;
+
+  if (input.label !== undefined) {
+    updates.push(`label = $${idx++}`);
+    values.push(input.label);
+  }
+  if (input.value !== undefined) {
+    updates.push(`value = $${idx++}`);
+    values.push(input.value);
+  }
+  if (input.activo !== undefined) {
+    updates.push(`activo = $${idx++}`);
+    values.push(input.activo);
+  }
+
+  updates.push("updated_at = now()");
+
+  values.push(id);
+  values.push(companyId);
+  const result = await pool.query<CatalogOptionRow>(
+    `
+      update empresa_catalog_options
+      set ${updates.join(", ")}
+      where id = $${idx++} and id_empresa = $${idx}
+      returning id, id_empresa, tipo, label, value, activo, created_at, updated_at
+    `,
+    values
+  );
+  return result.rows[0] ?? null;
 }

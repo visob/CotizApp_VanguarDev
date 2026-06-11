@@ -28,6 +28,7 @@ export type QuoteItemRow = {
   cantidad: number;
   precio_unitario_momento: string;
   descuento_porcentaje?: string;
+  iva_porcentaje?: string;
   producto_nombre: string;
 };
 
@@ -141,6 +142,7 @@ export async function listQuoteItems(quoteId: number, companyId?: number | null)
   const result = await pool.query<QuoteItemRow>(
     `
       select i.id, i.id_cotizacion, i.id_producto, i.cantidad, i.precio_unitario_momento, i.descuento_porcentaje,
+             i.iva_porcentaje,
              p.nombre as producto_nombre
       from items_cotizacion i
       ${companyJoin}
@@ -177,6 +179,7 @@ export type CreateQuoteInput = {
     cantidad: number;
     precioUnitarioMomento: string;
     descuentoPorcentaje: string;
+    ivaPorcentaje: string;
   }>;
 };
 
@@ -224,10 +227,17 @@ export async function createQuoteTransactional(input: CreateQuoteInput) {
     for (const item of input.items) {
       await client.query(
         `
-          insert into items_cotizacion (id_cotizacion, id_producto, cantidad, precio_unitario_momento, descuento_porcentaje)
-          values ($1, $2, $3, $4, $5)
+          insert into items_cotizacion (id_cotizacion, id_producto, cantidad, precio_unitario_momento, descuento_porcentaje, iva_porcentaje)
+          values ($1, $2, $3, $4, $5, $6)
         `,
-        [quoteId, item.idProducto, item.cantidad, item.precioUnitarioMomento, item.descuentoPorcentaje]
+        [
+          quoteId,
+          item.idProducto,
+          item.cantidad,
+          item.precioUnitarioMomento,
+          item.descuentoPorcentaje,
+          item.ivaPorcentaje
+        ]
       );
     }
 

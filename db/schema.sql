@@ -67,7 +67,8 @@ CREATE TABLE IF NOT EXISTS items_cotizacion (
   id_producto BIGINT NOT NULL REFERENCES productos(id),
   cantidad INTEGER NOT NULL CHECK (cantidad > 0),
   precio_unitario_momento NUMERIC(12, 2) NOT NULL,
-  descuento_porcentaje NUMERIC(5, 2) NOT NULL DEFAULT 0
+  descuento_porcentaje NUMERIC(5, 2) NOT NULL DEFAULT 0,
+  iva_porcentaje NUMERIC(5, 2) NOT NULL DEFAULT 21
 );
 
 CREATE TABLE IF NOT EXISTS seguimiento (
@@ -84,6 +85,17 @@ CREATE TABLE IF NOT EXISTS configuraciones (
   id_empresa BIGINT REFERENCES empresas(id) ON DELETE CASCADE,
   clave TEXT NOT NULL,
   valor TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS empresa_catalog_options (
+  id BIGSERIAL PRIMARY KEY,
+  id_empresa BIGINT NOT NULL REFERENCES empresas(id) ON DELETE CASCADE,
+  tipo TEXT NOT NULL,
+  label TEXT NOT NULL,
+  value TEXT NOT NULL,
+  activo BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS id_empresa BIGINT REFERENCES empresas(id);
@@ -118,9 +130,14 @@ ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS mantenimiento_oferta TEXT;
 ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS proxima_alerta TIMESTAMPTZ;
 
 ALTER TABLE items_cotizacion ADD COLUMN IF NOT EXISTS descuento_porcentaje NUMERIC(5, 2) NOT NULL DEFAULT 0;
+ALTER TABLE items_cotizacion ADD COLUMN IF NOT EXISTS iva_porcentaje NUMERIC(5, 2) NOT NULL DEFAULT 21;
 
 ALTER TABLE configuraciones ADD COLUMN IF NOT EXISTS id BIGSERIAL;
 ALTER TABLE configuraciones ADD COLUMN IF NOT EXISTS id_empresa BIGINT REFERENCES empresas(id) ON DELETE CASCADE;
+
+ALTER TABLE empresa_catalog_options ADD COLUMN IF NOT EXISTS activo BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE empresa_catalog_options ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now();
+ALTER TABLE empresa_catalog_options ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
 
 DO $$
 DECLARE
@@ -198,11 +215,15 @@ END $$;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_configuraciones_empresa_clave
   ON configuraciones (id_empresa, clave);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_catalog_options_empresa_tipo_label
+  ON empresa_catalog_options (id_empresa, tipo, label);
 
 CREATE INDEX IF NOT EXISTS idx_usuarios_id_empresa ON usuarios(id_empresa);
 CREATE INDEX IF NOT EXISTS idx_clientes_id_empresa ON clientes(id_empresa);
 CREATE INDEX IF NOT EXISTS idx_productos_id_empresa ON productos(id_empresa);
 CREATE INDEX IF NOT EXISTS idx_cotizaciones_id_empresa ON cotizaciones(id_empresa);
+CREATE INDEX IF NOT EXISTS idx_catalog_options_empresa_tipo_activo
+  ON empresa_catalog_options (id_empresa, tipo, activo);
 CREATE INDEX IF NOT EXISTS idx_cotizaciones_id_cliente ON cotizaciones(id_cliente);
 CREATE INDEX IF NOT EXISTS idx_cotizaciones_id_usuario ON cotizaciones(id_usuario);
 CREATE INDEX IF NOT EXISTS idx_items_cotizacion_id_cotizacion ON items_cotizacion(id_cotizacion);

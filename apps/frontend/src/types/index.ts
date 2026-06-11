@@ -1,6 +1,7 @@
 export type UserRole = "SuperAdmin" | "Admin" | "Vendedor";
 
 export type CurrencyCode = "ARS" | "USD";
+export type CatalogOptionType = "forma_pago" | "lugar_entrega" | "tipo_iva";
 
 export interface User {
   id: number;
@@ -30,6 +31,17 @@ export interface ManagedUser {
   failed_login_attempts: number;
   lock_until: string | null;
   lock_level: number;
+}
+
+export interface CatalogOption {
+  id: number;
+  id_empresa: number;
+  tipo: CatalogOptionType;
+  label: string;
+  value: string;
+  activo: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Client {

@@ -64,12 +64,14 @@ export function calcIvaCents(subtotalCents: bigint, ivaBasisPoints: bigint) {
 }
 
 export function calculateQuoteTotalsFromLines(input: {
-  lineTotalsCents: bigint[];
-  ivaBasisPoints: bigint;
+  lines: Array<{ subtotalCents: bigint; ivaBasisPoints: bigint }>;
   discountCents: bigint;
 }) {
-  const subtotalCents = input.lineTotalsCents.reduce((acc, v) => acc + v, 0n);
-  const ivaCents = calcIvaCents(subtotalCents, input.ivaBasisPoints);
+  const subtotalCents = input.lines.reduce((acc, line) => acc + line.subtotalCents, 0n);
+  const ivaCents = input.lines.reduce(
+    (acc, line) => acc + calcIvaCents(line.subtotalCents, line.ivaBasisPoints),
+    0n
+  );
   const totalBeforeDiscountCents = subtotalCents + ivaCents;
   const totalFinalCents =
     totalBeforeDiscountCents > input.discountCents

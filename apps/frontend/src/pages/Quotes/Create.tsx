@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../../components/common/Button";
-import type { Client, CurrencyCode, Product } from "../../types";
+import type { CatalogOption, Client, CurrencyCode, Product } from "../../types";
 import * as clientService from "../../services/client.service";
+import * as configService from "../../services/config.service";
 import * as productService from "../../services/product.service";
 import * as quoteService from "../../services/quote.service";
 import "../../styles/quotes.css"; // assuming there's quotes.css, or just keep layout.css if it's there
@@ -11,6 +12,7 @@ type QuoteItemDraft = {
   id_producto: string;
   cantidad: string;
   descuento_porcentaje: string;
+  iva_porcentaje: string;
 };
 
 function parseMoneyToCents(value: unknown) {
@@ -78,6 +80,7 @@ export default function QuotesCreate() {
 
   const [clients, setClients] = useState<Client[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [catalogOptions, setCatalogOptions] = useState<CatalogOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -103,7 +106,7 @@ export default function QuotesCreate() {
   });
 
   const [items, setItems] = useState<QuoteItemDraft[]>([
-    { id_producto: "", cantidad: "1", descuento_porcentaje: "0" }
+    { id_producto: "", cantidad: "1", descuento_porcentaje: "0", iva_porcentaje: "" }
   ]);
 
   const [notas, setNotas] = useState("");
@@ -116,9 +119,14 @@ export default function QuotesCreate() {
     setLoading(true);
     setError(null);
     try {
-      const [c, p] = await Promise.all([clientService.listClients(), productService.listProducts()]);
+      const [c, p, options] = await Promise.all([
+        clientService.listClients(),
+        productService.listProducts(),
+        configService.listCatalogOptions()
+      ]);
       setClients(c);
       setProducts(p);
+      setCatalogOptions(options);
     } catch (err) {
       setError(err instanceof Error ? err.message : "load_error");
     } finally {
@@ -130,7 +138,33 @@ export default function QuotesCreate() {
     void reloadCatalog();
   }, []);
 
-  const ivaBp = useMemo(() => parsePercentToBasisPoints("21") ?? 2100n, []);
+  const formaPagoOptions = useMemo(
+    () => catalogOptions.filter((option) => option.tipo === "forma_pago" && option.activo),
+    [catalogOptions]
+  );
+  const lugarEntregaOptions = useMemo(
+    () => catalogOptions.filter((option) => option.tipo === "lugar_entrega" && option.activo),
+    [catalogOptions]
+  );
+  const ivaOptions = useMemo(
+    () => catalogOptions.filter((option) => option.tipo === "tipo_iva" && option.activo),
+    [catalogOptions]
+  );
+
+  useEffect(() => {
+    if (ivaOptions.length === 0) return;
+    const defaultIva = ivaOptions[0]?.value ?? "";
+    setItems((prev) =>
+      prev.map((item) =>
+        item.iva_porcentaje
+          ? item
+          : {
+              ...item,
+              iva_porcentaje: defaultIva
+            }
+      )
+    );
+  }, [ivaOptions]);
 
   const preview = useMemo(() => {
     const lines = items
@@ -144,6 +178,7 @@ export default function QuotesCreate() {
             unitCents: 0n,
             qty: null as number | null,
             discountBp: parsePercentToBasisPoints(it.descuento_porcentaje) ?? 0n,
+            ivaBp: parsePercentToBasisPoints(it.iva_porcentaje) ?? 0n,
             netLineCents: null as bigint | null
           };
         }
@@ -160,6 +195,7 @@ export default function QuotesCreate() {
             unitCents,
             qty,
             discountBp,
+            ivaBp: parsePercentToBasisPoints(it.iva_porcentaje) ?? 0n,
             netLineCents: null
           };
         }
@@ -174,13 +210,17 @@ export default function QuotesCreate() {
           unitCents,
           qty,
           discountBp,
+          ivaBp: parsePercentToBasisPoints(it.iva_porcentaje) ?? 0n,
           netLineCents: net
         };
       })
       .filter(Boolean);
 
     const subtotalSinImpuestosCents = lines.reduce((acc, l) => acc + (l.netLineCents ?? 0n), 0n);
-    const impuestosCents = calcIvaCents(subtotalSinImpuestosCents, ivaBp);
+    const impuestosCents = lines.reduce(
+      (acc, line) => acc + calcIvaCents(line.netLineCents ?? 0n, line.ivaBp ?? 0n),
+      0n
+    );
     const subtotalConImpuestosCents = subtotalSinImpuestosCents + impuestosCents;
 
     return {
@@ -189,7 +229,7 @@ export default function QuotesCreate() {
       impuestosCents,
       subtotalConImpuestosCents
     };
-  }, [items, products, moneda, ivaBp]);
+  }, [items, products, moneda]);
 
   function backToList() {
     navigate("/quotes");
@@ -202,14 +242,19 @@ export default function QuotesCreate() {
         const cantidad = parseQty(it.cantidad);
         if (!Number.isFinite(id_producto) || id_producto <= 0 || !cantidad) return null;
         const descuentoOk = parsePercentToBasisPoints(it.descuento_porcentaje);
-        if (descuentoOk === null) return null;
+        const ivaOk = parsePercentToBasisPoints(it.iva_porcentaje);
+        if (descuentoOk === null || ivaOk === null) return null;
         return {
           id_producto,
           cantidad,
-          descuento_porcentaje: it.descuento_porcentaje.trim() || "0"
+          descuento_porcentaje: it.descuento_porcentaje.trim() || "0",
+          iva_porcentaje: it.iva_porcentaje.trim()
         };
       })
-      .filter((x): x is { id_producto: number; cantidad: number; descuento_porcentaje: string } => x !== null);
+      .filter(
+        (x): x is { id_producto: number; cantidad: number; descuento_porcentaje: string; iva_porcentaje: string } =>
+          x !== null
+      );
   }
 
   async function saveDraft() {
@@ -221,7 +266,6 @@ export default function QuotesCreate() {
       setError("Seleccioná un cliente válido");
       return;
     }
-
     setSaving(true);
     try {
       const payloadItems = parseNewItemsForPayload();
@@ -231,7 +275,6 @@ export default function QuotesCreate() {
         estado: "BORRADOR",
         fecha_emision: `${fechaCotizacion}T00:00:00.000Z`,
         fecha_vencimiento: `${fechaVencimiento}T00:00:00.000Z`,
-        iva_porcentaje: "21",
         descuento_global: "0",
         tipo_cambio: moneda === "ARS" ? "1" : "1",
         notas,
@@ -257,7 +300,6 @@ export default function QuotesCreate() {
       setError("Seleccioná un cliente válido");
       return;
     }
-
     const payloadItems = parseNewItemsForPayload();
     if (payloadItems.length === 0) {
       setError("Agregá al menos un producto con cantidad válida");
@@ -273,7 +315,6 @@ export default function QuotesCreate() {
         estado: estadoToSend,
         fecha_emision: `${fechaCotizacion}T00:00:00.000Z`,
         fecha_vencimiento: `${fechaVencimiento}T00:00:00.000Z`,
-        iva_porcentaje: "21",
         descuento_global: "0",
         tipo_cambio: moneda === "ARS" ? "1" : "1",
         notas,
@@ -355,6 +396,7 @@ export default function QuotesCreate() {
                 <option value="USD">USD</option>
               </select>
             </label>
+
           </div>
 
           <div className="sectionTitle">Productos</div>
@@ -402,15 +444,36 @@ export default function QuotesCreate() {
                   ))}
                 </select>
 
-                <select value="Auto" disabled className="select">
-                  <option>Auto</option>
+                <select
+                  value={it.iva_porcentaje}
+                  onChange={(e) =>
+                    setItems((prev) => prev.map((x, i) => (i === idx ? { ...x, iva_porcentaje: e.target.value } : x)))
+                  }
+                  className="select"
+                >
+                  <option value="">Seleccionar</option>
+                  {ivaOptions.map((option) => (
+                    <option key={option.id} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </select>
               </div>
             ))}
 
             <div className="row">
               <Button
-                onClick={() => setItems((prev) => [...prev, { id_producto: "", cantidad: "1", descuento_porcentaje: "0" }])}
+                onClick={() =>
+                  setItems((prev) => [
+                    ...prev,
+                    {
+                      id_producto: "",
+                      cantidad: "1",
+                      descuento_porcentaje: "0",
+                      iva_porcentaje: ivaOptions[0]?.value ?? ""
+                    }
+                  ])
+                }
                 disabled={saving}
                 className="btn--ghost minw-280"
               >
@@ -467,11 +530,25 @@ export default function QuotesCreate() {
             </label>
             <label className="field">
               <span className="label">Forma de pago</span>
-              <input value={formaPago} onChange={(e) => setFormaPago(e.target.value)} placeholder="Seleccionar" className="input" />
+              <select value={formaPago} onChange={(e) => setFormaPago(e.target.value)} className="select">
+                <option value="">Seleccionar</option>
+                {formaPagoOptions.map((option) => (
+                  <option key={option.id} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </label>
             <label className="field">
               <span className="label">Lugar de entrega</span>
-              <input value={lugarEntrega} onChange={(e) => setLugarEntrega(e.target.value)} placeholder="Seleccionar" className="input" />
+              <select value={lugarEntrega} onChange={(e) => setLugarEntrega(e.target.value)} className="select">
+                <option value="">Seleccionar</option>
+                {lugarEntregaOptions.map((option) => (
+                  <option key={option.id} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </label>
             <label className="field">
               <span className="label">Mantenimiento de oferta</span>

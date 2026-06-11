@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import { getActiveCatalogOptionByValue } from "../models/config.model.js";
 import { getClientById } from "../models/client.model.js";
 import { getProductById } from "../models/product.model.js";
 import {
@@ -81,8 +82,6 @@ export async function createQuoteHandler(req: Request, res: Response) {
   const idCliente = parseNumericId(req.body?.id_cliente);
   const moneda = req.body?.moneda === "ARS" || req.body?.moneda === "USD" ? req.body.moneda : null;
   const descuentoCents = parseMoneyToCents(req.body?.descuento_global ?? "0") ?? 0n;
-  const ivaBp =
-    parsePercentToBasisPoints(req.body?.iva_porcentaje ?? process.env.DEFAULT_IVA ?? "21") ?? 2100n;
   const tipoCambio = parseDecimalString(req.body?.tipo_cambio ?? "1", 6);
   const returnPdf = req.body?.return_pdf === true;
   const estadoRaw = typeof req.body?.estado === "string" ? req.body.estado.trim() : "";
@@ -98,19 +97,42 @@ export async function createQuoteHandler(req: Request, res: Response) {
   const mantenimientoOferta = parseTextOrNull(req.body?.mantenimiento_oferta);
 
   const items = Array.isArray(req.body?.items) ? (req.body.items as unknown[]) : [];
+  const itemsWithProduct = items.filter((it) => parseNumericId((it as any)?.id_producto));
   const parsedItems = items
     .map((it) => {
       const idProducto = parseNumericId((it as any)?.id_producto);
       const cantidad = parseQty((it as any)?.cantidad);
       const descuentoBp =
         parsePercentToBasisPoints((it as any)?.descuento_porcentaje ?? (it as any)?.descuento ?? "0") ?? 0n;
-      return idProducto && cantidad ? { idProducto, cantidad, descuentoBp } : null;
+      const ivaValue = typeof (it as any)?.iva_porcentaje === "string" ? (it as any).iva_porcentaje.trim() : "";
+      return idProducto && cantidad && ivaValue ? { idProducto, cantidad, descuentoBp, ivaValue } : null;
     })
-    .filter((x): x is { idProducto: number; cantidad: number; descuentoBp: bigint } => x !== null);
+    .filter((x): x is { idProducto: number; cantidad: number; descuentoBp: bigint; ivaValue: string } => x !== null);
 
   if (!idCliente || !moneda || !tipoCambio) {
     res.status(400).json({ ok: false, error: "invalid_request" });
     return;
+  }
+
+  if (itemsWithProduct.length !== parsedItems.length) {
+    res.status(400).json({ ok: false, error: "tipo_iva_requerido" });
+    return;
+  }
+
+  if (formaPago) {
+    const option = await getActiveCatalogOptionByValue(companyId, "forma_pago", formaPago);
+    if (!option) {
+      res.status(400).json({ ok: false, error: "forma_pago_invalida" });
+      return;
+    }
+  }
+
+  if (lugarEntrega) {
+    const option = await getActiveCatalogOptionByValue(companyId, "lugar_entrega", lugarEntrega);
+    if (!option) {
+      res.status(400).json({ ok: false, error: "lugar_entrega_invalido" });
+      return;
+    }
   }
 
   const client = await getClientById(idCliente, companyId);
@@ -119,12 +141,13 @@ export async function createQuoteHandler(req: Request, res: Response) {
     return;
   }
 
-  const lineTotals: bigint[] = [];
+  const linesForTotals: Array<{ subtotalCents: bigint; ivaBasisPoints: bigint }> = [];
   const itemsToInsert: Array<{
     idProducto: number;
     cantidad: number;
     precioUnitarioMomento: string;
     descuentoPorcentaje: string;
+    ivaPorcentaje: string;
   }> = [];
 
   if (parsedItems.length === 0 && estado !== "BORRADOR") {
@@ -139,6 +162,17 @@ export async function createQuoteHandler(req: Request, res: Response) {
       return;
     }
 
+    const ivaOption = await getActiveCatalogOptionByValue(companyId, "tipo_iva", it.ivaValue);
+    if (!ivaOption) {
+      res.status(400).json({ ok: false, error: "tipo_iva_invalido" });
+      return;
+    }
+    const ivaBp = parsePercentToBasisPoints(ivaOption.value);
+    if (ivaBp === null) {
+      res.status(400).json({ ok: false, error: "tipo_iva_invalido" });
+      return;
+    }
+
     const unitStr = moneda === "ARS" ? product.precio_ars : product.precio_usd;
     const unitCents = parseMoneyToCents(unitStr);
     if (unitCents === null) {
@@ -150,20 +184,23 @@ export async function createQuoteHandler(req: Request, res: Response) {
     const discountLineCents = (grossLineTotal * it.descuentoBp + 5000n) / 10000n;
     const netLineTotal = grossLineTotal > discountLineCents ? grossLineTotal - discountLineCents : 0n;
 
-    lineTotals.push(netLineTotal);
+    linesForTotals.push({ subtotalCents: netLineTotal, ivaBasisPoints: ivaBp });
     itemsToInsert.push({
       idProducto: it.idProducto,
       cantidad: it.cantidad,
       precioUnitarioMomento: centsToMoneyString(unitCents),
-      descuentoPorcentaje: basisPointsToPercentString(it.descuentoBp)
+      descuentoPorcentaje: basisPointsToPercentString(it.descuentoBp),
+      ivaPorcentaje: basisPointsToPercentString(ivaBp)
     });
   }
 
   const totals = calculateQuoteTotalsFromLines({
-    lineTotalsCents: lineTotals,
-    ivaBasisPoints: ivaBp,
+    lines: linesForTotals,
     discountCents: descuentoCents
   });
+
+  const effectiveIvaBp =
+    totals.subtotalCents > 0n ? (totals.ivaCents * 10000n + totals.subtotalCents / 2n) / totals.subtotalCents : 0n;
 
   const quoteId = await createQuoteTransactional({
     idEmpresa: companyId,
@@ -174,7 +211,7 @@ export async function createQuoteHandler(req: Request, res: Response) {
     moneda,
     tipoCambio,
     subtotal: centsToMoneyString(totals.subtotalCents),
-    ivaPorcentaje: basisPointsToPercentString(ivaBp),
+    ivaPorcentaje: basisPointsToPercentString(effectiveIvaBp),
     descuentoGlobal: centsToMoneyString(descuentoCents),
     totalFinal: centsToMoneyString(totals.totalFinalCents),
     estado,
@@ -205,7 +242,7 @@ export async function createQuoteHandler(req: Request, res: Response) {
     moneda,
     estado,
     subtotal: centsToMoneyString(totals.subtotalCents),
-    iva_porcentaje: basisPointsToPercentString(ivaBp),
+    iva_porcentaje: basisPointsToPercentString(effectiveIvaBp),
     descuento_global: centsToMoneyString(descuentoCents),
     total_final: centsToMoneyString(totals.totalFinalCents)
   });

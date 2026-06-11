@@ -36,7 +36,6 @@ export type CreateQuoteInput = {
   fecha_emision?: string;
   fecha_vencimiento?: string;
   descuento_global?: string;
-  iva_porcentaje?: string;
   tipo_cambio?: string;
   notas?: string;
   plazo_entrega?: string;
@@ -44,7 +43,12 @@ export type CreateQuoteInput = {
   lugar_entrega?: string;
   mantenimiento_oferta?: string;
   proxima_alerta?: string;
-  items: Array<{ id_producto: number; cantidad: number; descuento_porcentaje?: string }>;
+  items: Array<{
+    id_producto: number;
+    cantidad: number;
+    descuento_porcentaje?: string;
+    iva_porcentaje: string;
+  }>;
   return_pdf?: boolean;
 };
 
@@ -78,6 +82,7 @@ export type QuoteDetailItem = {
   cantidad: number;
   precio_unitario_momento: string;
   descuento_porcentaje: string;
+  iva_porcentaje: string;
   producto_nombre: string;
 };
 

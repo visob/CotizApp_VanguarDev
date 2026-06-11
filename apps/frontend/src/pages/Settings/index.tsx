@@ -5,6 +5,7 @@ import type { Company, ManagedUser, UserRole } from "../../types";
 import * as companyService from "../../services/company.service";
 import * as configService from "../../services/config.service";
 import * as userAdminService from "../../services/userAdmin.service";
+import { GeneralCatalogManager } from "./GeneralCatalogManager";
 import "../../styles/settings.css";
 
 function toNonEmptyString(value: unknown) {
@@ -428,39 +429,43 @@ export default function SettingsPage() {
       </div>
 
       {activeTab === "general" ? (
-        <div className="settingsCard">
-          <h2 className="settingsSectionTitle">Moneda y Cotización</h2>
+        <div className="stack">
+          <div className="settingsCard">
+            <h2 className="settingsSectionTitle">Moneda y Cotización</h2>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <label className="field" style={{ maxWidth: 300 }}>
-              <span className="label">Tasa de Cambio (1 USD = ? ARS)</span>
-              <input
-                value={exchangeRate}
-                onChange={(e) => setExchangeRate(e.target.value)}
-                className="input"
-                style={{ background: "rgba(17,24,39,0.06)", border: "none" }}
-              />
-            </label>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <label className="field" style={{ maxWidth: 300 }}>
+                <span className="label">Tasa de Cambio (1 USD = ? ARS)</span>
+                <input
+                  value={exchangeRate}
+                  onChange={(e) => setExchangeRate(e.target.value)}
+                  className="input"
+                  style={{ background: "rgba(17,24,39,0.06)", border: "none" }}
+                />
+              </label>
 
-            <div style={{ marginTop: 8 }}>
-              <Button
-                disabled={saving}
-                onClick={() => void handleSave()}
-                style={{ background: "#18181b", color: "#fff", border: "none", minWidth: 120 }}
-              >
-                {saving ? "Guardando..." : "Guardar Cambios"}
-              </Button>
-            </div>
-
-            {message ? (
-              <div
-                className={message.type === "error" ? "error" : "success"}
-                style={message.type === "success" ? { fontSize: 14, fontWeight: 500 } : {}}
-              >
-                {message.text}
+              <div style={{ marginTop: 8 }}>
+                <Button
+                  disabled={saving}
+                  onClick={() => void handleSave()}
+                  style={{ background: "#18181b", color: "#fff", border: "none", minWidth: 120 }}
+                >
+                  {saving ? "Guardando..." : "Guardar Cambios"}
+                </Button>
               </div>
-            ) : null}
+
+              {message ? (
+                <div
+                  className={message.type === "error" ? "error" : "success"}
+                  style={message.type === "success" ? { fontSize: 14, fontWeight: 500 } : {}}
+                >
+                  {message.text}
+                </div>
+              ) : null}
+            </div>
           </div>
+
+          <GeneralCatalogManager />
         </div>
       ) : null}
 
