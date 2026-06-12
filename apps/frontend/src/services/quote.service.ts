@@ -4,6 +4,7 @@ import type { CurrencyCode } from "../types";
 export type QuoteListItem = {
   id: number;
   fecha_emision: string;
+  fecha_vencimiento: string | null;
   moneda: CurrencyCode;
   total_final: string;
   estado: string;
@@ -21,12 +22,22 @@ export async function listQuotes(input?: {
   estado?: string;
   from?: string;
   to?: string;
+  venc_from?: string;
+  venc_to?: string;
+  tipo_cliente?: string;
+  order_by?: "reactivacion" | "vencimiento" | "estado" | "cliente" | "tipo_cliente" | "monto" | "emision" | "id";
+  order_dir?: "asc" | "desc";
 }) {
   const params = new URLSearchParams();
   if (input?.q) params.set("q", input.q);
   if (input?.estado) params.set("estado", input.estado);
   if (input?.from) params.set("from", input.from);
   if (input?.to) params.set("to", input.to);
+  if (input?.venc_from) params.set("venc_from", input.venc_from);
+  if (input?.venc_to) params.set("venc_to", input.venc_to);
+  if (input?.tipo_cliente) params.set("tipo_cliente", input.tipo_cliente);
+  if (input?.order_by) params.set("order_by", input.order_by);
+  if (input?.order_dir) params.set("order_dir", input.order_dir);
   const qs = params.toString();
   const path = qs ? `/api/quotes?${qs}` : "/api/quotes";
   const result = await apiRequest<{ ok: true; items: QuoteListItem[] }>({ path });

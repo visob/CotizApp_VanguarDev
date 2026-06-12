@@ -70,15 +70,37 @@ const allowedEstados = new Set([
 export async function listQuotesHandler(req: Request, res: Response) {
   const q = typeof req.query?.q === "string" ? req.query.q.trim() : "";
   const estado = typeof req.query?.estado === "string" ? req.query.estado.trim() : "";
+  const tipoCliente = typeof req.query?.tipo_cliente === "string" ? req.query.tipo_cliente.trim() : "";
   const from = typeof req.query?.from === "string" ? parseIsoDateOrNull(req.query.from) : null;
   const to = typeof req.query?.to === "string" ? parseIsoDateOrNull(req.query.to) : null;
+  const vencFrom = typeof req.query?.venc_from === "string" ? parseIsoDateOrNull(req.query.venc_from) : null;
+  const vencTo = typeof req.query?.venc_to === "string" ? parseIsoDateOrNull(req.query.venc_to) : null;
+  const orderByRaw = typeof req.query?.order_by === "string" ? req.query.order_by.trim() : "";
+  const orderDirRaw = typeof req.query?.order_dir === "string" ? req.query.order_dir.trim().toLowerCase() : "";
+  const orderBy =
+    orderByRaw === "reactivacion" ||
+    orderByRaw === "vencimiento" ||
+    orderByRaw === "estado" ||
+    orderByRaw === "cliente" ||
+    orderByRaw === "tipo_cliente" ||
+    orderByRaw === "monto" ||
+    orderByRaw === "emision" ||
+    orderByRaw === "id"
+      ? orderByRaw
+      : undefined;
+  const orderDir = orderDirRaw === "asc" || orderDirRaw === "desc" ? (orderDirRaw as "asc" | "desc") : undefined;
 
   const items = await listQuotes({
     companyId: getScopedCompanyId(req),
     q: q || undefined,
     estado: estado || undefined,
+    tipoCliente: tipoCliente || undefined,
     from: from || undefined,
-    to: to || undefined
+    to: to || undefined,
+    vencFrom: vencFrom || undefined,
+    vencTo: vencTo || undefined,
+    orderBy,
+    orderDir
   });
   res.json({ ok: true, items });
 }

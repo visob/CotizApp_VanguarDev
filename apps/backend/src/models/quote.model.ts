@@ -38,6 +38,7 @@ export type QuoteItemRow = {
 export type QuoteListRow = {
   id: string | number;
   fecha_emision: string;
+  fecha_vencimiento: string | null;
   moneda: string;
   total_final: string;
   estado: string;
@@ -94,6 +95,11 @@ export async function listQuotes(input?: {
   estado?: string;
   from?: string;
   to?: string;
+  vencFrom?: string;
+  vencTo?: string;
+  tipoCliente?: string;
+  orderBy?: "reactivacion" | "vencimiento" | "estado" | "cliente" | "tipo_cliente" | "monto" | "emision" | "id";
+  orderDir?: "asc" | "desc";
 }) {
   const where: string[] = [];
   const values: unknown[] = [];
@@ -118,6 +124,21 @@ export async function listQuotes(input?: {
     where.push(`c.fecha_emision <= $${values.length}::timestamptz`);
   }
 
+  if (input?.vencFrom) {
+    values.push(input.vencFrom);
+    where.push(`c.fecha_vencimiento >= $${values.length}::timestamptz`);
+  }
+
+  if (input?.vencTo) {
+    values.push(input.vencTo);
+    where.push(`c.fecha_vencimiento <= $${values.length}::timestamptz`);
+  }
+
+  if (input?.tipoCliente) {
+    values.push(input.tipoCliente);
+    where.push(`cl.clasificacion = $${values.length}`);
+  }
+
   if (input?.q) {
     values.push(`%${input.q}%`);
     const idx = values.length;
@@ -126,11 +147,33 @@ export async function listQuotes(input?: {
 
   const whereSql = where.length ? `where ${where.join(" and ")}` : "";
 
+  const orderDir = input?.orderDir === "asc" ? "asc" : "desc";
+  const orderBy = input?.orderBy ?? null;
+  const orderSql =
+    orderBy === "reactivacion"
+      ? `order by proxima_alerta ${orderDir} nulls last, c.id desc`
+      : orderBy === "vencimiento"
+        ? `order by c.fecha_vencimiento ${orderDir} nulls last, c.id desc`
+        : orderBy === "estado"
+          ? `order by c.estado ${orderDir}, c.id desc`
+          : orderBy === "cliente"
+            ? `order by cl.nombre_empresa ${orderDir}, c.id desc`
+            : orderBy === "tipo_cliente"
+              ? `order by cl.clasificacion ${orderDir} nulls last, c.id desc`
+              : orderBy === "monto"
+                ? `order by c.total_final::numeric ${orderDir}, c.id desc`
+                : orderBy === "emision"
+                  ? `order by c.fecha_emision ${orderDir}, c.id desc`
+      : orderBy === "id"
+        ? `order by c.id ${orderDir}`
+                  : "order by c.id desc";
+
   const result = await pool.query<QuoteListRow>(
     `
       select
         c.id,
         c.fecha_emision,
+        c.fecha_vencimiento,
         c.moneda,
         c.total_final,
         c.estado,
@@ -144,7 +187,7 @@ export async function listQuotes(input?: {
       from cotizaciones c
       join clientes cl on cl.id = c.id_cliente
       ${whereSql}
-      order by c.id desc
+      ${orderSql}
     `,
     values
   );
@@ -194,6 +237,7 @@ export async function listReactivationAlerts(companyId?: number | null) {
         c.id_cliente,
         c.id_usuario,
         c.fecha_emision,
+        c.fecha_vencimiento,
         c.moneda,
         c.total_final,
         c.estado,

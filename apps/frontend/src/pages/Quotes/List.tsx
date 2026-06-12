@@ -29,6 +29,14 @@ export default function QuotesList() {
   const [q, setQ] = useState("");
   const [fromDate, setFromDate] = useState<string>("");
   const [toDate, setToDate] = useState<string>("");
+  const [vencFromDate, setVencFromDate] = useState<string>("");
+  const [vencToDate, setVencToDate] = useState<string>("");
+  const [estadoFilter, setEstadoFilter] = useState<string>("");
+  const [tipoClienteFilter, setTipoClienteFilter] = useState<string>("");
+  const [orderBy, setOrderBy] = useState<
+    "reactivacion" | "vencimiento" | "estado" | "cliente" | "tipo_cliente" | "monto" | "emision" | "id"
+  >("reactivacion");
+  const [orderDir, setOrderDir] = useState<"asc" | "desc">("asc");
 
   const [statusModalQuote, setStatusModalQuote] = useState<quoteService.QuoteListItem | null>(null);
   const [newStatus, setNewStatus] = useState("");
@@ -62,7 +70,18 @@ export default function QuotesList() {
     try {
       if (tab === "reactivar") {
         const data = await quoteService.listReactivationAlerts();
-        setQuotes(data);
+        const dir = orderDir === "asc" ? 1 : -1;
+        const sorted = [...data].sort((a, b) => {
+          if (orderBy === "id") return dir * (a.id - b.id);
+          if (orderBy === "cliente") return dir * a.cliente_nombre_empresa.localeCompare(b.cliente_nombre_empresa);
+          if (orderBy === "estado") return dir * a.estado.localeCompare(b.estado);
+          if (orderBy === "tipo_cliente") return dir * String(a.cliente_clasificacion ?? "").localeCompare(String(b.cliente_clasificacion ?? ""));
+          if (orderBy === "monto") return dir * (Number(a.total_final) - Number(b.total_final));
+          if (orderBy === "vencimiento") return dir * (new Date(a.fecha_vencimiento ?? 0).getTime() - new Date(b.fecha_vencimiento ?? 0).getTime());
+          if (orderBy === "emision") return dir * (new Date(a.fecha_emision).getTime() - new Date(b.fecha_emision).getTime());
+          return dir * (new Date(a.fecha_reactivacion_activa ?? a.proxima_alerta ?? 0).getTime() - new Date(b.fecha_reactivacion_activa ?? b.proxima_alerta ?? 0).getTime());
+        });
+        setQuotes(sorted);
         return;
       }
       const estadoParam = undefined;
@@ -78,9 +97,14 @@ export default function QuotesList() {
 
       const data = await quoteService.listQuotes({
         q: q.trim() || undefined,
-        estado: estadoParam,
+        estado: estadoFilter || estadoParam || undefined,
+        tipo_cliente: tipoClienteFilter || undefined,
         from,
-        to
+        to,
+        venc_from: toIsoStartOfDay(vencFromDate) ?? undefined,
+        venc_to: toIsoEndOfDay(vencToDate) ?? undefined,
+        order_by: orderBy,
+        order_dir: orderDir
       });
       setQuotes(data);
     } catch (err) {
@@ -90,10 +114,29 @@ export default function QuotesList() {
     }
   }
 
+  function toggleSort(field: typeof orderBy) {
+    if (orderBy === field) {
+      setOrderDir((d) => (d === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setOrderBy(field);
+    setOrderDir("asc");
+  }
+
+  function sortIndicator(field: typeof orderBy) {
+    if (orderBy !== field) return "";
+    return orderDir === "asc" ? " ↑" : " ↓";
+  }
+
   useEffect(() => {
     void reloadQuotes();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
+
+  useEffect(() => {
+    void reloadQuotes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderBy, orderDir, estadoFilter, tipoClienteFilter]);
 
   function statusStyle(s: string) {
     const v = s.toUpperCase();
@@ -124,12 +167,13 @@ export default function QuotesList() {
   }
 
   function downloadCsv() {
-    const header = ["Cliente", "ID", "Fecha", "Monto", "Moneda", "TipoCliente", "Estado", "ProxAlerta"].join(",");
+    const header = ["Cliente", "ID", "Fecha", "Vencimiento", "Monto", "Moneda", "TipoCliente", "Estado", "ProxAlerta"].join(",");
     const rows = quotes.map((r) => {
       const values = [
         r.cliente_nombre_empresa,
         `#${r.id}`,
         formatDate(r.fecha_emision),
+        r.fecha_vencimiento ? formatDate(r.fecha_vencimiento) : "",
         r.total_final,
         r.moneda,
         r.cliente_clasificacion ?? "",
@@ -234,12 +278,35 @@ export default function QuotesList() {
           </div>
 
           <div className="filterToolbar">
-            <input placeholder="Buscar..." value={q} onChange={(e) => setQ(e.target.value)} className="searchBarInput" />
+          <input placeholder="Buscar cliente o ID..." value={q} onChange={(e) => setQ(e.target.value)} className="searchBarInput" />
             <div className="dateRange">
               <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="input" />
               <span className="hint">—</span>
               <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="input" />
             </div>
+          <div className="dateRange">
+            <input type="date" value={vencFromDate} onChange={(e) => setVencFromDate(e.target.value)} className="input" />
+            <span className="hint">—</span>
+            <input type="date" value={vencToDate} onChange={(e) => setVencToDate(e.target.value)} className="input" />
+          </div>
+          <select value={estadoFilter} onChange={(e) => setEstadoFilter(e.target.value)} className="select">
+            <option value="">Estado (todos)</option>
+            <option value="BORRADOR">Borrador</option>
+            <option value="EMITIDA">Emitida</option>
+            <option value="ENVIADA">Enviada</option>
+            <option value="POSPUESTA">Pospuesta</option>
+            <option value="PEND_REACTIVACION">Pend. reactivación</option>
+            <option value="CERRADA_PERDIDA">Cerrada perdida</option>
+            <option value="CERRADA_GANADA">Cerrada ganada</option>
+          </select>
+          <select value={tipoClienteFilter} onChange={(e) => setTipoClienteFilter(e.target.value)} className="select">
+            <option value="">Tipo (todos)</option>
+            {Array.from(new Set(quotes.map((x) => x.cliente_clasificacion).filter(Boolean) as string[]))
+              .sort((a, b) => a.localeCompare(b))
+              .map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+          </select>
             <Button disabled={loading} onClick={() => void reloadQuotes()} className="btn--ghost" style={{ display: "flex", gap: 8 }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 4H20L14 12V19L10 21V12L4 4Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg> Filtrar
             </Button>
@@ -256,13 +323,46 @@ export default function QuotesList() {
                 <th className="colCheckbox">
                   <input type="checkbox" />
                 </th>
-                <th>Cliente</th>
-                <th>ID</th>
-                <th>Fecha</th>
-                <th>Monto</th>
-                <th>Tipo de cliente</th>
-                <th>Estado</th>
-                <th>Prox. alerta</th>
+                <th>
+                  <button type="button" onClick={() => toggleSort("cliente")} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", font: "inherit" }}>
+                    Cliente{sortIndicator("cliente")}
+                  </button>
+                </th>
+                <th>
+                  <button type="button" onClick={() => toggleSort("id")} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", font: "inherit" }}>
+                    ID{sortIndicator("id")}
+                  </button>
+                </th>
+                <th>
+                  <button type="button" onClick={() => toggleSort("emision")} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", font: "inherit" }}>
+                    Fecha{sortIndicator("emision")}
+                  </button>
+                </th>
+                <th>
+                  <button type="button" onClick={() => toggleSort("vencimiento")} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", font: "inherit" }}>
+                    Venc.{sortIndicator("vencimiento")}
+                  </button>
+                </th>
+                <th>
+                  <button type="button" onClick={() => toggleSort("monto")} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", font: "inherit" }}>
+                    Monto{sortIndicator("monto")}
+                  </button>
+                </th>
+                <th>
+                  <button type="button" onClick={() => toggleSort("tipo_cliente")} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", font: "inherit" }}>
+                    Tipo de cliente{sortIndicator("tipo_cliente")}
+                  </button>
+                </th>
+                <th>
+                  <button type="button" onClick={() => toggleSort("estado")} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", font: "inherit" }}>
+                    Estado{sortIndicator("estado")}
+                  </button>
+                </th>
+                <th>
+                  <button type="button" onClick={() => toggleSort("reactivacion")} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", font: "inherit" }}>
+                    Prox. alerta{sortIndicator("reactivacion")}
+                  </button>
+                </th>
                 <th>Acciones</th>
               </tr>
             </thead>
@@ -277,6 +377,7 @@ export default function QuotesList() {
                     <td>{r.cliente_nombre_empresa}</td>
                     <td className="cellMuted">#{r.id}</td>
                     <td className="cellMuted">{formatDate(r.fecha_emision)}</td>
+                    <td className="cellMuted">{r.fecha_vencimiento ? formatDate(r.fecha_vencimiento) : "-"}</td>
                     <td className="cellMuted">
                       ${r.total_final} {r.moneda}
                     </td>
@@ -333,7 +434,7 @@ export default function QuotesList() {
               })}
               {quotes.length === 0 && !loading ? (
                 <tr>
-                  <td className="cellEmpty" colSpan={9}>
+                  <td className="cellEmpty" colSpan={10}>
                     No hay cotizaciones para mostrar
                   </td>
                 </tr>
