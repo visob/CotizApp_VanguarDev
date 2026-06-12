@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS cotizaciones (
   tipo_cambio NUMERIC(18, 6) NOT NULL,
   subtotal NUMERIC(12, 2) NOT NULL,
   iva_porcentaje NUMERIC(5, 2) NOT NULL,
+  descuento_porcentaje_global NUMERIC(5, 2) NOT NULL DEFAULT 0,
   descuento_global NUMERIC(12, 2) NOT NULL,
   total_final NUMERIC(12, 2) NOT NULL,
   estado TEXT NOT NULL,
@@ -66,7 +67,6 @@ CREATE TABLE IF NOT EXISTS items_cotizacion (
   id_producto BIGINT NOT NULL REFERENCES productos(id),
   cantidad INTEGER NOT NULL CHECK (cantidad > 0),
   precio_unitario_momento NUMERIC(12, 2) NOT NULL,
-  descuento_porcentaje NUMERIC(5, 2) NOT NULL DEFAULT 0,
   iva_porcentaje NUMERIC(5, 2) NOT NULL DEFAULT 21
 );
 
@@ -127,9 +127,10 @@ ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS forma_pago TEXT;
 ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS lugar_entrega TEXT;
 ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS proxima_alerta TIMESTAMPTZ;
 ALTER TABLE cotizaciones DROP COLUMN IF EXISTS mantenimiento_oferta;
+ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS descuento_porcentaje_global NUMERIC(5, 2) NOT NULL DEFAULT 0;
 
-ALTER TABLE items_cotizacion ADD COLUMN IF NOT EXISTS descuento_porcentaje NUMERIC(5, 2) NOT NULL DEFAULT 0;
 ALTER TABLE items_cotizacion ADD COLUMN IF NOT EXISTS iva_porcentaje NUMERIC(5, 2) NOT NULL DEFAULT 21;
+ALTER TABLE items_cotizacion DROP COLUMN IF EXISTS descuento_porcentaje;
 
 ALTER TABLE configuraciones ADD COLUMN IF NOT EXISTS id BIGSERIAL;
 ALTER TABLE configuraciones ADD COLUMN IF NOT EXISTS id_empresa BIGINT REFERENCES empresas(id) ON DELETE CASCADE;

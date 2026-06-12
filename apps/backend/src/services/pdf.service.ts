@@ -1,11 +1,6 @@
 import PDFDocument from "pdfkit";
 import { pool } from "../config/database.js";
-import {
-  calcIvaCents,
-  centsToMoneyString,
-  parseMoneyToCents,
-  parsePercentToBasisPoints
-} from "./quote.service.js";
+import { centsToMoneyString, parseMoneyToCents } from "./quote.service.js";
 
 type PdfRow = {
   id: string | number;
@@ -14,6 +9,7 @@ type PdfRow = {
   tipo_cambio: string;
   subtotal: string;
   iva_porcentaje: string;
+  descuento_porcentaje_global: string;
   descuento_global: string;
   total_final: string;
   estado: string;
@@ -24,7 +20,6 @@ type PdfRow = {
   usuario_email: string;
   item_cantidad: number;
   item_precio_unitario_momento: string;
-  item_descuento_porcentaje: string;
   producto_nombre: string;
 };
 
@@ -38,6 +33,7 @@ export async function generateQuotePdfBuffer(quoteId: number) {
         c.tipo_cambio,
         c.subtotal,
         c.iva_porcentaje,
+        c.descuento_porcentaje_global,
         c.descuento_global,
         c.total_final,
         c.estado,
@@ -48,7 +44,6 @@ export async function generateQuotePdfBuffer(quoteId: number) {
         u.email as usuario_email,
         i.cantidad as item_cantidad,
         i.precio_unitario_momento as item_precio_unitario_momento,
-        i.descuento_porcentaje as item_descuento_porcentaje,
         p.nombre as producto_nombre
       from cotizaciones c
       join clientes cl on cl.id = c.id_cliente
@@ -68,10 +63,9 @@ export async function generateQuotePdfBuffer(quoteId: number) {
 
   const header = rows[0]!;
   const subtotalCents = parseMoneyToCents(header.subtotal) ?? 0n;
-  const ivaBp = parsePercentToBasisPoints(header.iva_porcentaje) ?? 0n;
-  const ivaCents = calcIvaCents(subtotalCents, ivaBp);
   const descuentoCents = parseMoneyToCents(header.descuento_global) ?? 0n;
   const totalFinalCents = parseMoneyToCents(header.total_final) ?? 0n;
+  const ivaCents = totalFinalCents > subtotalCents ? totalFinalCents - subtotalCents : 0n;
 
   const doc = new PDFDocument({ size: "A4", margin: 48 });
   const chunks: Buffer[] = [];
@@ -127,14 +121,8 @@ export async function generateQuotePdfBuffer(quoteId: number) {
   for (const r of rows) {
     const unitCents = parseMoneyToCents(r.item_precio_unitario_momento) ?? 0n;
     const grossLineCents = unitCents * BigInt(r.item_cantidad);
-    const discountBp = parsePercentToBasisPoints(r.item_descuento_porcentaje) ?? 0n;
-    const discountCentsLine = (grossLineCents * discountBp + 5000n) / 10000n;
-    const lineTotalCents = grossLineCents > discountCentsLine ? grossLineCents - discountCentsLine : 0n;
-    const lineTotal = centsToMoneyString(lineTotalCents);
-    const desc =
-      r.item_descuento_porcentaje && r.item_descuento_porcentaje !== "0" && r.item_descuento_porcentaje !== "0.00"
-        ? `${r.producto_nombre} (Dto ${r.item_descuento_porcentaje}%)`
-        : r.producto_nombre;
+    const lineTotal = centsToMoneyString(grossLineCents);
+    const desc = r.producto_nombre;
     doc.fontSize(10).text(desc, colDesc, y, { width: 250 });
     doc.text(String(r.item_cantidad), colQty, y);
     doc.text(centsToMoneyString(unitCents), colUnit, y);
@@ -157,7 +145,10 @@ export async function generateQuotePdfBuffer(quoteId: number) {
     `IVA (${header.iva_porcentaje}%): ${centsToMoneyString(ivaCents)} ${header.moneda}`,
     summaryX
   );
-  doc.text(`Descuento: ${centsToMoneyString(descuentoCents)} ${header.moneda}`, summaryX);
+  doc.text(
+    `Descuento (${header.descuento_porcentaje_global}%): ${centsToMoneyString(descuentoCents)} ${header.moneda}`,
+    summaryX
+  );
   doc.fontSize(12).text(`Total: ${centsToMoneyString(totalFinalCents)} ${header.moneda}`, summaryX);
 
   doc.end();

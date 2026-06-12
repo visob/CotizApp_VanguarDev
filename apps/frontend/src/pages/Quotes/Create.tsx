@@ -13,7 +13,6 @@ import "../../styles/quotes.css"; // assuming there's quotes.css, or just keep l
 type QuoteItemDraft = {
   id_producto: string;
   cantidad: string;
-  descuento_porcentaje: string;
   iva_porcentaje: string;
 };
 
@@ -66,6 +65,10 @@ function parseQty(value: string) {
   return int > 0 ? int : null;
 }
 
+function normalizePercentInput(value: string) {
+  return value.replaceAll("%", "").trim();
+}
+
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -109,13 +112,14 @@ export default function QuotesCreate() {
   });
 
   const [items, setItems] = useState<QuoteItemDraft[]>([
-    { id_producto: "", cantidad: "1", descuento_porcentaje: "0", iva_porcentaje: "" }
+    { id_producto: "", cantidad: "1", iva_porcentaje: "" }
   ]);
 
   const [notas, setNotas] = useState("");
   const [plazoEntrega, setPlazoEntrega] = useState("");
   const [formaPago, setFormaPago] = useState("");
   const [lugarEntrega, setLugarEntrega] = useState("");
+  const [descuentoPorcentajeGlobal, setDescuentoPorcentajeGlobal] = useState("0");
 
   async function reloadCatalog() {
     setLoading(true);
@@ -169,6 +173,8 @@ export default function QuotesCreate() {
   }, [ivaOptions]);
 
   const preview = useMemo(() => {
+    const globalDiscountBp =
+      parsePercentToBasisPoints(normalizePercentInput(descuentoPorcentajeGlobal)) ?? 0n;
     const lines = items
       .map((it, idx) => {
         const id = Number(it.id_producto);
@@ -179,7 +185,6 @@ export default function QuotesCreate() {
             productName: "Seleccionar",
             unitCents: 0n,
             qty: null as number | null,
-            discountBp: parsePercentToBasisPoints(it.descuento_porcentaje) ?? 0n,
             ivaBp: parsePercentToBasisPoints(it.iva_porcentaje) ?? 0n,
             netLineCents: null as bigint | null
           };
@@ -188,7 +193,6 @@ export default function QuotesCreate() {
         const qty = parseQty(it.cantidad);
         const unitStr = moneda === "ARS" ? product.precio_ars : product.precio_usd;
         const unitCents = parseMoneyToCents(unitStr) ?? 0n;
-        const discountBp = parsePercentToBasisPoints(it.descuento_porcentaje) ?? 0n;
 
         if (!qty) {
           return {
@@ -196,14 +200,13 @@ export default function QuotesCreate() {
             productName: product.nombre,
             unitCents,
             qty,
-            discountBp,
             ivaBp: parsePercentToBasisPoints(it.iva_porcentaje) ?? 0n,
             netLineCents: null
           };
         }
 
         const gross = unitCents * BigInt(qty);
-        const discountLine = (gross * discountBp + 5000n) / 10000n;
+        const discountLine = (gross * globalDiscountBp + 5000n) / 10000n;
         const net = gross > discountLine ? gross - discountLine : 0n;
 
         return {
@@ -211,7 +214,6 @@ export default function QuotesCreate() {
           productName: product.nombre,
           unitCents,
           qty,
-          discountBp,
           ivaBp: parsePercentToBasisPoints(it.iva_porcentaje) ?? 0n,
           netLineCents: net
         };
@@ -219,6 +221,13 @@ export default function QuotesCreate() {
       .filter(Boolean);
 
     const subtotalSinImpuestosCents = lines.reduce((acc, l) => acc + (l.netLineCents ?? 0n), 0n);
+    const descuentoCents = lines.reduce((acc, line) => {
+      const gross = line.qty ? line.unitCents * BigInt(line.qty) : 0n;
+      const d = (gross * globalDiscountBp + 5000n) / 10000n;
+      return acc + d;
+    }, 0n);
+    const subtotalAntesDescuentoCents =
+      subtotalSinImpuestosCents + descuentoCents;
     const impuestosCents = lines.reduce(
       (acc, line) => acc + calcIvaCents(line.netLineCents ?? 0n, line.ivaBp ?? 0n),
       0n
@@ -227,11 +236,19 @@ export default function QuotesCreate() {
 
     return {
       lines,
+      subtotalAntesDescuentoCents,
       subtotalSinImpuestosCents,
+      descuentoCents,
       impuestosCents,
       subtotalConImpuestosCents
     };
-  }, [items, products, moneda]);
+  }, [items, products, moneda, descuentoPorcentajeGlobal]);
+
+  const discountBpInput = useMemo(
+    () => parsePercentToBasisPoints(normalizePercentInput(descuentoPorcentajeGlobal)),
+    [descuentoPorcentajeGlobal]
+  );
+  const isDiscountValid = discountBpInput !== null && discountBpInput >= 0n && discountBpInput <= 10000n;
 
   function backToList() {
     navigate("/quotes");
@@ -243,19 +260,16 @@ export default function QuotesCreate() {
         const id_producto = Number(it.id_producto);
         const cantidad = parseQty(it.cantidad);
         if (!Number.isFinite(id_producto) || id_producto <= 0 || !cantidad) return null;
-        const descuentoOk = parsePercentToBasisPoints(it.descuento_porcentaje);
         const ivaOk = parsePercentToBasisPoints(it.iva_porcentaje);
-        if (descuentoOk === null || ivaOk === null) return null;
+        if (ivaOk === null) return null;
         return {
           id_producto,
           cantidad,
-          descuento_porcentaje: it.descuento_porcentaje.trim() || "0",
           iva_porcentaje: it.iva_porcentaje.trim()
         };
       })
       .filter(
-        (x): x is { id_producto: number; cantidad: number; descuento_porcentaje: string; iva_porcentaje: string } =>
-          x !== null
+        (x): x is { id_producto: number; cantidad: number; iva_porcentaje: string } => x !== null
       );
   }
 
@@ -268,6 +282,10 @@ export default function QuotesCreate() {
       setError("Seleccioná un cliente válido");
       return;
     }
+    if (!isDiscountValid) {
+      setError("El descuento global debe ser un porcentaje entre 0 y 100 (ej: 10 o 10.5)");
+      return;
+    }
     setSaving(true);
     try {
       const payloadItems = parseNewItemsForPayload();
@@ -277,7 +295,7 @@ export default function QuotesCreate() {
         estado: "BORRADOR",
         fecha_emision: `${fechaCotizacion}T00:00:00.000Z`,
         fecha_vencimiento: `${fechaVencimiento}T00:00:00.000Z`,
-        descuento_global: "0",
+        descuento_porcentaje_global: normalizePercentInput(descuentoPorcentajeGlobal),
         tipo_cambio: moneda === "ARS" ? "1" : "1",
         notas,
         plazo_entrega: plazoEntrega,
@@ -302,6 +320,10 @@ export default function QuotesCreate() {
       setError("Seleccioná un cliente válido");
       return;
     }
+    if (!isDiscountValid) {
+      setError("El descuento global debe ser un porcentaje entre 0 y 100 (ej: 10 o 10.5)");
+      return;
+    }
     const payloadItems = parseNewItemsForPayload();
     if (payloadItems.length === 0) {
       setError("Agregá al menos un producto con cantidad válida");
@@ -317,7 +339,7 @@ export default function QuotesCreate() {
         estado: estadoToSend,
         fecha_emision: `${fechaCotizacion}T00:00:00.000Z`,
         fecha_vencimiento: `${fechaVencimiento}T00:00:00.000Z`,
-        descuento_global: "0",
+        descuento_porcentaje_global: normalizePercentInput(descuentoPorcentajeGlobal),
         tipo_cambio: moneda === "ARS" ? "1" : "1",
         notas,
         plazo_entrega: plazoEntrega,
@@ -399,6 +421,17 @@ export default function QuotesCreate() {
               </select>
             </label>
 
+            <label className="field">
+              <span className="label">Descuento global</span>
+              <input
+                value={descuentoPorcentajeGlobal}
+                onChange={(e) => setDescuentoPorcentajeGlobal(e.target.value)}
+                className="input"
+                inputMode="decimal"
+                placeholder="Ej: 10.5"
+              />
+            </label>
+
           </div>
 
           <div className="sectionTitle">Productos</div>
@@ -408,7 +441,6 @@ export default function QuotesCreate() {
             <div className="productsHeaderGrid hint">
               <div>Nombre del producto</div>
               <div>Cantidad</div>
-              <div>Descuento</div>
               <div>Impuestos</div>
             </div>
 
@@ -435,18 +467,6 @@ export default function QuotesCreate() {
                 />
 
                 <select
-                  value={it.descuento_porcentaje}
-                  onChange={(e) => setItems((prev) => prev.map((x, i) => (i === idx ? { ...x, descuento_porcentaje: e.target.value } : x)))}
-                  className="select"
-                >
-                  {["0", "5", "10", "15", "20", "25", "30"].map((v) => (
-                    <option key={v} value={v}>
-                      {v}%
-                    </option>
-                  ))}
-                </select>
-
-                <select
                   value={it.iva_porcentaje}
                   onChange={(e) =>
                     setItems((prev) => prev.map((x, i) => (i === idx ? { ...x, iva_porcentaje: e.target.value } : x)))
@@ -471,7 +491,6 @@ export default function QuotesCreate() {
                     {
                       id_producto: "",
                       cantidad: "1",
-                      descuento_porcentaje: "0",
                       iva_porcentaje: ivaOptions[0]?.value ?? ""
                     }
                   ])
@@ -497,16 +516,20 @@ export default function QuotesCreate() {
             <div className="card summaryCard">
               <div className="stack">
                 <div className="summaryRow">
+                  <span className="hint">Subtotal (antes de descuento):</span>
+                  <span className="summaryValue">${centsToMoneyString(preview.subtotalAntesDescuentoCents)}</span>
+                </div>
+                <div className="summaryRow">
+                  <span className="hint">Descuento global ({descuentoPorcentajeGlobal}%):</span>
+                  <span className="summaryValue">-${centsToMoneyString(preview.descuentoCents)}</span>
+                </div>
+                <div className="summaryRow">
                   <span className="hint">Subtotal (sin impuestos):</span>
                   <span className="summaryValue">${centsToMoneyString(preview.subtotalSinImpuestosCents)}</span>
                 </div>
                 <div className="summaryRow">
                   <span className="hint">Impuestos:</span>
                   <span className="summaryValue">${centsToMoneyString(preview.impuestosCents)}</span>
-                </div>
-                <div className="summaryRow">
-                  <span className="hint">Subtotal (con impuestos):</span>
-                  <span className="summaryValue">${centsToMoneyString(preview.subtotalConImpuestosCents)}</span>
                 </div>
                 <div className="divider" />
                 <div className="summaryRow">

@@ -81,7 +81,10 @@ export async function createQuoteHandler(req: Request, res: Response) {
 
   const idCliente = parseNumericId(req.body?.id_cliente);
   const moneda = req.body?.moneda === "ARS" || req.body?.moneda === "USD" ? req.body.moneda : null;
-  const descuentoCents = parseMoneyToCents(req.body?.descuento_global ?? "0") ?? 0n;
+  const descuentoGlobalBp =
+    parsePercentToBasisPoints(
+      req.body?.descuento_porcentaje_global ?? req.body?.descuento_porcentaje ?? req.body?.descuento_global ?? "0"
+    ) ?? 0n;
   const tipoCambio = parseDecimalString(req.body?.tipo_cambio ?? "1", 6);
   const returnPdf = req.body?.return_pdf === true;
   const estadoRaw = typeof req.body?.estado === "string" ? req.body.estado.trim() : "";
@@ -101,15 +104,18 @@ export async function createQuoteHandler(req: Request, res: Response) {
     .map((it) => {
       const idProducto = parseNumericId((it as any)?.id_producto);
       const cantidad = parseQty((it as any)?.cantidad);
-      const descuentoBp =
-        parsePercentToBasisPoints((it as any)?.descuento_porcentaje ?? (it as any)?.descuento ?? "0") ?? 0n;
       const ivaValue = typeof (it as any)?.iva_porcentaje === "string" ? (it as any).iva_porcentaje.trim() : "";
-      return idProducto && cantidad && ivaValue ? { idProducto, cantidad, descuentoBp, ivaValue } : null;
+      return idProducto && cantidad && ivaValue ? { idProducto, cantidad, ivaValue } : null;
     })
-    .filter((x): x is { idProducto: number; cantidad: number; descuentoBp: bigint; ivaValue: string } => x !== null);
+    .filter((x): x is { idProducto: number; cantidad: number; ivaValue: string } => x !== null);
 
   if (!idCliente || !moneda || !tipoCambio) {
     res.status(400).json({ ok: false, error: "invalid_request" });
+    return;
+  }
+
+  if (descuentoGlobalBp < 0n || descuentoGlobalBp > 10000n) {
+    res.status(400).json({ ok: false, error: "descuento_global_invalido" });
     return;
   }
 
@@ -140,12 +146,11 @@ export async function createQuoteHandler(req: Request, res: Response) {
     return;
   }
 
-  const linesForTotals: Array<{ subtotalCents: bigint; ivaBasisPoints: bigint }> = [];
+  const linesForTotals: Array<{ grossSubtotalCents: bigint; ivaBasisPoints: bigint }> = [];
   const itemsToInsert: Array<{
     idProducto: number;
     cantidad: number;
     precioUnitarioMomento: string;
-    descuentoPorcentaje: string;
     ivaPorcentaje: string;
   }> = [];
 
@@ -180,22 +185,18 @@ export async function createQuoteHandler(req: Request, res: Response) {
     }
 
     const grossLineTotal = unitCents * BigInt(it.cantidad);
-    const discountLineCents = (grossLineTotal * it.descuentoBp + 5000n) / 10000n;
-    const netLineTotal = grossLineTotal > discountLineCents ? grossLineTotal - discountLineCents : 0n;
-
-    linesForTotals.push({ subtotalCents: netLineTotal, ivaBasisPoints: ivaBp });
+    linesForTotals.push({ grossSubtotalCents: grossLineTotal, ivaBasisPoints: ivaBp });
     itemsToInsert.push({
       idProducto: it.idProducto,
       cantidad: it.cantidad,
       precioUnitarioMomento: centsToMoneyString(unitCents),
-      descuentoPorcentaje: basisPointsToPercentString(it.descuentoBp),
       ivaPorcentaje: basisPointsToPercentString(ivaBp)
     });
   }
 
   const totals = calculateQuoteTotalsFromLines({
     lines: linesForTotals,
-    discountCents: descuentoCents
+    globalDiscountBasisPoints: descuentoGlobalBp
   });
 
   const effectiveIvaBp =
@@ -211,7 +212,8 @@ export async function createQuoteHandler(req: Request, res: Response) {
     tipoCambio,
     subtotal: centsToMoneyString(totals.subtotalCents),
     ivaPorcentaje: basisPointsToPercentString(effectiveIvaBp),
-    descuentoGlobal: centsToMoneyString(descuentoCents),
+    descuentoPorcentajeGlobal: basisPointsToPercentString(descuentoGlobalBp),
+    descuentoGlobal: centsToMoneyString(totals.discountCents),
     totalFinal: centsToMoneyString(totals.totalFinalCents),
     estado,
     notas,
@@ -241,7 +243,8 @@ export async function createQuoteHandler(req: Request, res: Response) {
     estado,
     subtotal: centsToMoneyString(totals.subtotalCents),
     iva_porcentaje: basisPointsToPercentString(effectiveIvaBp),
-    descuento_global: centsToMoneyString(descuentoCents),
+    descuento_porcentaje_global: basisPointsToPercentString(descuentoGlobalBp),
+    descuento_global: centsToMoneyString(totals.discountCents),
     total_final: centsToMoneyString(totals.totalFinalCents)
   });
 }

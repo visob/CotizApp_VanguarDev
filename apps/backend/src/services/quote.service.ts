@@ -64,24 +64,36 @@ export function calcIvaCents(subtotalCents: bigint, ivaBasisPoints: bigint) {
 }
 
 export function calculateQuoteTotalsFromLines(input: {
-  lines: Array<{ subtotalCents: bigint; ivaBasisPoints: bigint }>;
-  discountCents: bigint;
+  lines: Array<{ grossSubtotalCents: bigint; ivaBasisPoints: bigint }>;
+  globalDiscountBasisPoints: bigint;
 }) {
-  const subtotalCents = input.lines.reduce((acc, line) => acc + line.subtotalCents, 0n);
-  const ivaCents = input.lines.reduce(
-    (acc, line) => acc + calcIvaCents(line.subtotalCents, line.ivaBasisPoints),
-    0n
-  );
-  const totalBeforeDiscountCents = subtotalCents + ivaCents;
-  const totalFinalCents =
-    totalBeforeDiscountCents > input.discountCents
-      ? totalBeforeDiscountCents - input.discountCents
-      : 0n;
+  const discountBp = input.globalDiscountBasisPoints >= 0n ? input.globalDiscountBasisPoints : 0n;
+
+  const discountCents = input.lines.reduce((acc, line) => {
+    const d = (line.grossSubtotalCents * discountBp + 5000n) / 10000n;
+    return acc + d;
+  }, 0n);
+
+  const subtotalAfterDiscountCents = input.lines.reduce((acc, line) => {
+    const d = (line.grossSubtotalCents * discountBp + 5000n) / 10000n;
+    const net = line.grossSubtotalCents > d ? line.grossSubtotalCents - d : 0n;
+    return acc + net;
+  }, 0n);
+
+  const ivaCents = input.lines.reduce((acc, line) => {
+    const d = (line.grossSubtotalCents * discountBp + 5000n) / 10000n;
+    const net = line.grossSubtotalCents > d ? line.grossSubtotalCents - d : 0n;
+    return acc + calcIvaCents(net, line.ivaBasisPoints);
+  }, 0n);
+
+  const totalBeforeDiscountCents = subtotalAfterDiscountCents + ivaCents;
+  const totalFinalCents = totalBeforeDiscountCents;
 
   return {
-    subtotalCents,
+    subtotalCents: subtotalAfterDiscountCents,
     ivaCents,
     totalBeforeDiscountCents,
-    totalFinalCents
+    totalFinalCents,
+    discountCents
   };
 }

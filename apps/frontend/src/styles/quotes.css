@@ -74,7 +74,7 @@
 .productsHeaderGrid,
 .productsRowGrid {
   display: grid;
-  grid-template-columns: 2fr 120px 140px 140px;
+  grid-template-columns: 2fr 120px 160px;
   gap: 10px;
 }
 

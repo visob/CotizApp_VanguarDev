@@ -152,7 +152,7 @@ export default function QuotesView() {
               <tr>
                 <th>Producto</th>
                 <th>Cantidad</th>
-                <th>Descuento</th>
+                <th>IVA</th>
                 <th>Precio Unit.</th>
               </tr>
             </thead>
@@ -161,7 +161,7 @@ export default function QuotesView() {
                 <tr key={it.id}>
                   <td>{it.producto_nombre}</td>
                   <td>{it.cantidad}</td>
-                  <td>{it.descuento_porcentaje}%</td>
+                  <td>{it.iva_porcentaje}%</td>
                   <td>${it.precio_unitario_momento} {q.moneda}</td>
                 </tr>
               ))}
@@ -182,7 +182,9 @@ export default function QuotesView() {
               </div>
               <div className="summaryRow">
                 <span className="hint">Descuento Global:</span>
-                <span className="summaryValue">${q.descuento_global}</span>
+                <span className="summaryValue">
+                  {q.descuento_porcentaje_global}% (${q.descuento_global})
+                </span>
               </div>
               <div className="summaryRow">
                 <span className="hint">IVA ({q.iva_porcentaje}):</span>
