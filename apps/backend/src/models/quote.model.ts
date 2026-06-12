@@ -19,6 +19,10 @@ export type QuoteRow = {
   forma_pago?: string | null;
   lugar_entrega?: string | null;
   proxima_alerta?: string | null;
+  fecha_reactivacion_1?: string | null;
+  fecha_reactivacion_2?: string | null;
+  fecha_reactivacion_3?: string | null;
+  reactivacion_activa?: number;
 };
 
 export type QuoteItemRow = {
@@ -40,7 +44,36 @@ export type QuoteListRow = {
   cliente_nombre_empresa: string;
   cliente_clasificacion: string | null;
   proxima_alerta: string | null;
+  reactivacion_activa?: number;
+  fecha_reactivacion_1?: string | null;
+  fecha_reactivacion_2?: string | null;
+  fecha_reactivacion_3?: string | null;
 };
+
+export type QuoteReactivationAlertRow = QuoteListRow & {
+  id_cliente: string | number;
+  id_usuario: string | number;
+  fecha_reactivacion_activa: string;
+};
+
+function activeReactivationSql(alias: string) {
+  return `
+    coalesce(
+      case ${alias}.reactivacion_activa
+        when 1 then ${alias}.fecha_reactivacion_1
+        when 2 then ${alias}.fecha_reactivacion_2
+        when 3 then ${alias}.fecha_reactivacion_3
+        else null
+      end,
+      ${alias}.proxima_alerta,
+      (
+        select min(s.fecha_reactivacion_programada)
+        from seguimiento s
+        where s.id_cotizacion = ${alias}.id and s.fecha_reactivacion_programada is not null
+      )
+    )
+  `;
+}
 
 export type QuoteTrackingRow = {
   id: string | number;
@@ -103,14 +136,11 @@ export async function listQuotes(input?: {
         c.estado,
         cl.nombre_empresa as cliente_nombre_empresa,
         cl.clasificacion as cliente_clasificacion,
-        coalesce(
-          c.proxima_alerta,
-          (
-            select min(s.fecha_reactivacion_programada)
-            from seguimiento s
-            where s.id_cotizacion = c.id and s.fecha_reactivacion_programada is not null
-          )
-        ) as proxima_alerta
+        ${activeReactivationSql("c")} as proxima_alerta,
+        c.reactivacion_activa,
+        c.fecha_reactivacion_1,
+        c.fecha_reactivacion_2,
+        c.fecha_reactivacion_3
       from cotizaciones c
       join clientes cl on cl.id = c.id_cliente
       ${whereSql}
@@ -130,16 +160,59 @@ export async function getQuoteById(id: number, companyId?: number | null) {
   }
   const result = await pool.query<QuoteRow>(
     `
-      select id, id_cliente, id_usuario, fecha_emision, fecha_vencimiento, moneda, tipo_cambio, subtotal, iva_porcentaje,
-             descuento_porcentaje_global, descuento_global, total_final, estado, notas, plazo_entrega, forma_pago, lugar_entrega, proxima_alerta
-      from cotizaciones
-      where id = $1
+      select c.id, c.id_cliente, c.id_usuario, c.fecha_emision, c.fecha_vencimiento, c.moneda, c.tipo_cambio, c.subtotal, c.iva_porcentaje,
+             c.descuento_porcentaje_global, c.descuento_global, c.total_final, c.estado, c.notas, c.plazo_entrega, c.forma_pago, c.lugar_entrega,
+             ${activeReactivationSql("c")} as proxima_alerta,
+             c.fecha_reactivacion_1, c.fecha_reactivacion_2, c.fecha_reactivacion_3, c.reactivacion_activa
+      from cotizaciones c
+      where c.id = $1
       ${companySql}
       limit 1
     `,
     values
   );
   return result.rows[0] ?? null;
+}
+
+export async function listReactivationAlerts(companyId?: number | null) {
+  const values: unknown[] = [];
+  const where: string[] = [
+    `c.estado not in ('CERRADA_GANADA', 'CERRADA_PERDIDA')`,
+    `${activeReactivationSql("c")} is not null`,
+    `${activeReactivationSql("c")} <= now()`
+  ];
+
+  if (companyId !== undefined && companyId !== null) {
+    values.push(companyId);
+    where.push(`c.id_empresa = $${values.length}`);
+  }
+
+  const result = await pool.query<QuoteReactivationAlertRow>(
+    `
+      select
+        c.id,
+        c.id_cliente,
+        c.id_usuario,
+        c.fecha_emision,
+        c.moneda,
+        c.total_final,
+        c.estado,
+        cl.nombre_empresa as cliente_nombre_empresa,
+        cl.clasificacion as cliente_clasificacion,
+        ${activeReactivationSql("c")} as proxima_alerta,
+        ${activeReactivationSql("c")} as fecha_reactivacion_activa,
+        c.reactivacion_activa,
+        c.fecha_reactivacion_1,
+        c.fecha_reactivacion_2,
+        c.fecha_reactivacion_3
+      from cotizaciones c
+      join clientes cl on cl.id = c.id_cliente
+      where ${where.join(" and ")}
+      order by ${activeReactivationSql("c")} asc, c.id desc
+    `,
+    values
+  );
+  return result.rows;
 }
 
 export async function listQuoteItems(quoteId: number, companyId?: number | null) {
@@ -250,6 +323,10 @@ export type CreateQuoteInput = {
   formaPago: string | null;
   lugarEntrega: string | null;
   proximaAlertaIso: string | null;
+  fechaReactivacion1Iso?: string | null;
+  fechaReactivacion2Iso?: string | null;
+  fechaReactivacion3Iso?: string | null;
+  reactivacionActiva?: 1 | 2 | 3;
   items: Array<{
     idProducto: number;
     cantidad: number;
@@ -267,9 +344,9 @@ export async function createQuoteTransactional(input: CreateQuoteInput) {
       `
         insert into cotizaciones
           (id_empresa, id_cliente, id_usuario, fecha_emision, fecha_vencimiento, moneda, tipo_cambio, subtotal, iva_porcentaje, descuento_porcentaje_global, descuento_global, total_final, estado,
-           notas, plazo_entrega, forma_pago, lugar_entrega, proxima_alerta)
+           notas, plazo_entrega, forma_pago, lugar_entrega, proxima_alerta, fecha_reactivacion_1, fecha_reactivacion_2, fecha_reactivacion_3, reactivacion_activa)
         values
-          ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+          ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
         returning id
       `,
       [
@@ -290,7 +367,11 @@ export async function createQuoteTransactional(input: CreateQuoteInput) {
         input.plazoEntrega,
         input.formaPago,
         input.lugarEntrega,
-        input.proximaAlertaIso
+        input.proximaAlertaIso,
+        input.fechaReactivacion1Iso ?? null,
+        input.fechaReactivacion2Iso ?? null,
+        input.fechaReactivacion3Iso ?? null,
+        input.reactivacionActiva ?? 1
       ]
     );
 
@@ -331,7 +412,14 @@ export async function createQuoteTransactional(input: CreateQuoteInput) {
 
 export async function updateQuote(
   id: number,
-  data: { estado?: string; proxima_alerta?: string | null },
+  data: {
+    estado?: string;
+    proxima_alerta?: string | null;
+    fecha_reactivacion_1?: string | null;
+    fecha_reactivacion_2?: string | null;
+    fecha_reactivacion_3?: string | null;
+    reactivacion_activa?: number;
+  },
   companyId?: number | null
 ) {
   const updates: string[] = [];
@@ -346,6 +434,26 @@ export async function updateQuote(
   if (data.proxima_alerta !== undefined) {
     updates.push(`proxima_alerta = $${idx++}`);
     values.push(data.proxima_alerta);
+  }
+
+  if (data.fecha_reactivacion_1 !== undefined) {
+    updates.push(`fecha_reactivacion_1 = $${idx++}`);
+    values.push(data.fecha_reactivacion_1);
+  }
+
+  if (data.fecha_reactivacion_2 !== undefined) {
+    updates.push(`fecha_reactivacion_2 = $${idx++}`);
+    values.push(data.fecha_reactivacion_2);
+  }
+
+  if (data.fecha_reactivacion_3 !== undefined) {
+    updates.push(`fecha_reactivacion_3 = $${idx++}`);
+    values.push(data.fecha_reactivacion_3);
+  }
+
+  if (data.reactivacion_activa !== undefined) {
+    updates.push(`reactivacion_activa = $${idx++}`);
+    values.push(data.reactivacion_activa);
   }
 
   if (updates.length === 0) return true;

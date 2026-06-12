@@ -57,6 +57,10 @@ export default function QuotesView() {
 
   const [estado, setEstado] = useState("");
   const [proximaAlerta, setProximaAlerta] = useState("");
+  const [fechaReactivacion1, setFechaReactivacion1] = useState("");
+  const [fechaReactivacion2, setFechaReactivacion2] = useState("");
+  const [fechaReactivacion3, setFechaReactivacion3] = useState("");
+  const [reactivacionActiva, setReactivacionActiva] = useState<1 | 2 | 3>(1);
 
   const [noteModalOpen, setNoteModalOpen] = useState(false);
   const [noteModalValue, setNoteModalValue] = useState("");
@@ -72,6 +76,10 @@ export default function QuotesView() {
       setData(res);
       setEstado(res.quote.estado);
       setProximaAlerta(res.quote.proxima_alerta ? res.quote.proxima_alerta.split("T")[0] : "");
+      setFechaReactivacion1(res.quote.fecha_reactivacion_1 ? res.quote.fecha_reactivacion_1.split("T")[0] : "");
+      setFechaReactivacion2(res.quote.fecha_reactivacion_2 ? res.quote.fecha_reactivacion_2.split("T")[0] : "");
+      setFechaReactivacion3(res.quote.fecha_reactivacion_3 ? res.quote.fecha_reactivacion_3.split("T")[0] : "");
+      setReactivacionActiva((res.quote.reactivacion_activa as 1 | 2 | 3) || 1);
     } catch (err) {
       setError(getErrorMessage(err, {}, "No se pudo cargar la cotización"));
     } finally {
@@ -104,7 +112,11 @@ export default function QuotesView() {
     try {
       await quoteService.updateQuote(Number(id), {
         estado,
-        proxima_alerta: proximaAlerta ? `${proximaAlerta}T00:00:00.000Z` : null
+        proxima_alerta: proximaAlerta ? `${proximaAlerta}T00:00:00.000Z` : null,
+        fecha_reactivacion_1: fechaReactivacion1 ? `${fechaReactivacion1}T00:00:00.000Z` : null,
+        fecha_reactivacion_2: fechaReactivacion2 ? `${fechaReactivacion2}T00:00:00.000Z` : null,
+        fecha_reactivacion_3: fechaReactivacion3 ? `${fechaReactivacion3}T00:00:00.000Z` : null,
+        reactivacion_activa: reactivacionActiva
       });
       showToast({ type: "success", text: "Cotización actualizada correctamente" });
       void loadData();
@@ -286,6 +298,26 @@ export default function QuotesView() {
               <button onClick={() => setProximaAlerta("")} style={{ background: "none", border: "none", color: "var(--color-primary)", cursor: "pointer", fontSize: 13 }}>Limpiar</button>
             </div>
           </label>
+          <label className="field">
+            <span className="label">Fecha de reactivación 1</span>
+            <input type="date" value={fechaReactivacion1} onChange={(e) => setFechaReactivacion1(e.target.value)} className="input" />
+          </label>
+          <label className="field">
+            <span className="label">Fecha de reactivación 2</span>
+            <input type="date" value={fechaReactivacion2} onChange={(e) => setFechaReactivacion2(e.target.value)} className="input" />
+          </label>
+          <label className="field">
+            <span className="label">Fecha de reactivación 3</span>
+            <input type="date" value={fechaReactivacion3} onChange={(e) => setFechaReactivacion3(e.target.value)} className="input" />
+          </label>
+          <label className="field">
+            <span className="label">Reactivación activa</span>
+            <select value={reactivacionActiva} onChange={(e) => setReactivacionActiva(Number(e.target.value) as 1 | 2 | 3)} className="select">
+              <option value={1}>Fecha 1</option>
+              <option value={2}>Fecha 2</option>
+              <option value={3}>Fecha 3</option>
+            </select>
+          </label>
         </div>
 
         <div className="sectionTitle" style={{ marginTop: 32 }}>Productos</div>
@@ -441,7 +473,21 @@ export default function QuotesView() {
         )}
 
         <div className="newActions">
-          <Button disabled={saving || (estado === q.estado && proximaAlerta === (q.proxima_alerta ? q.proxima_alerta.split("T")[0] : ""))} onClick={saveChanges} className="btn--primary minw-170">
+          <Button
+            disabled={
+              saving ||
+              (
+                estado === q.estado &&
+                proximaAlerta === (q.proxima_alerta ? q.proxima_alerta.split("T")[0] : "") &&
+                fechaReactivacion1 === (q.fecha_reactivacion_1 ? q.fecha_reactivacion_1.split("T")[0] : "") &&
+                fechaReactivacion2 === (q.fecha_reactivacion_2 ? q.fecha_reactivacion_2.split("T")[0] : "") &&
+                fechaReactivacion3 === (q.fecha_reactivacion_3 ? q.fecha_reactivacion_3.split("T")[0] : "") &&
+                reactivacionActiva === q.reactivacion_activa
+              )
+            }
+            onClick={saveChanges}
+            className="btn--primary minw-170"
+          >
             {saving ? "Guardando..." : "Guardar cambios"}
           </Button>
         </div>

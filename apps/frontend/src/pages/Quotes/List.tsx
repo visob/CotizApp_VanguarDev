@@ -60,7 +60,12 @@ export default function QuotesList() {
     setLoading(true);
     setError(null);
     try {
-      const estadoParam = tab === "reactivar" ? "PEND_REACTIVACION" : undefined;
+      if (tab === "reactivar") {
+        const data = await quoteService.listReactivationAlerts();
+        setQuotes(data);
+        return;
+      }
+      const estadoParam = undefined;
       const from =
         tab === "ultimas"
           ? (() => {
@@ -139,9 +144,17 @@ export default function QuotesList() {
 
   async function handleUpdateStatus() {
     if (!statusModalQuote || !newStatus) return;
+    if (newStatus === "POSPUESTA" && !newAlertDate) {
+      setError("Para posponer la cotización debés indicar una fecha de reactivación futura");
+      return;
+    }
     try {
-      await quoteService.updateQuote(statusModalQuote.id, { estado: newStatus });
+      await quoteService.updateQuote(statusModalQuote.id, {
+        estado: newStatus,
+        fecha_reactivacion_activa: newStatus === "POSPUESTA" && newAlertDate ? `${newAlertDate}T00:00:00.000Z` : undefined
+      });
       setStatusModalQuote(null);
+      setNewAlertDate("");
       showToast({ type: "success", text: "Estado de la cotización actualizado" });
       void reloadQuotes();
     } catch (err) {
@@ -290,6 +303,7 @@ export default function QuotesList() {
                             label: "Cambiar Estado",
                             onClick: () => {
                               setNewStatus(r.estado);
+                              setNewAlertDate(r.proxima_alerta ? r.proxima_alerta.split("T")[0] : "");
                               setStatusModalQuote(r);
                             }
                           },
@@ -344,6 +358,20 @@ export default function QuotesList() {
                 <option value="CERRADA_PERDIDA">Cerrada perdida</option>
                 <option value="CERRADA_GANADA">Cerrada ganada</option>
               </select>
+              {newStatus === "POSPUESTA" ? (
+                <div style={{ marginTop: 12 }}>
+                  <input
+                    type="date"
+                    value={newAlertDate}
+                    onChange={(e) => setNewAlertDate(e.target.value)}
+                    className="input"
+                    style={{ width: "100%" }}
+                  />
+                  <div className="hint" style={{ marginTop: 6 }}>
+                    Al posponer, la fecha de reactivación futura es obligatoria.
+                  </div>
+                </div>
+              ) : null}
             </div>
             <div style={{ display: "flex", gap: 12, marginTop: 24, justifyContent: "flex-end" }}>
               <Button onClick={() => setStatusModalQuote(null)} className="btn--ghost">Cancelar</Button>

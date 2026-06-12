@@ -7,6 +7,7 @@ import {
   createQuoteTransactional,
   getQuoteById,
   listQuoteItems,
+  listReactivationAlerts,
   listQuotes,
   updateQuote
 } from "../models/quote.model.js";
@@ -42,6 +43,20 @@ function parseTextOrNull(value: unknown) {
   return trimmed ? trimmed : null;
 }
 
+function addDaysIso(baseIso: string, days: number) {
+  const date = new Date(baseIso);
+  if (!Number.isFinite(date.getTime())) return null;
+  date.setUTCDate(date.getUTCDate() + days);
+  date.setUTCHours(0, 0, 0, 0);
+  return date.toISOString();
+}
+
+function parseActiveReactivationSlot(value: unknown): 1 | 2 | 3 | null {
+  const raw = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
+  if (raw === 1 || raw === 2 || raw === 3) return raw;
+  return null;
+}
+
 const allowedEstados = new Set([
   "BORRADOR",
   "EMITIDA",
@@ -66,6 +81,20 @@ export async function listQuotesHandler(req: Request, res: Response) {
     to: to || undefined
   });
   res.json({ ok: true, items });
+}
+
+export async function listReactivationAlertsHandler(req: Request, res: Response) {
+  const items = await listReactivationAlerts(getScopedCompanyId(req));
+  res.json({
+    ok: true,
+    items: items.map((row) => ({
+      ...row,
+      id: Number(row.id),
+      id_cliente: Number(row.id_cliente),
+      id_usuario: Number(row.id_usuario),
+      reactivacion_activa: Number(row.reactivacion_activa ?? 1)
+    }))
+  });
 }
 
 export async function createQuoteHandler(req: Request, res: Response) {
@@ -93,11 +122,20 @@ export async function createQuoteHandler(req: Request, res: Response) {
 
   const fechaEmisionIso = parseIsoDateOrNull(req.body?.fecha_emision) ?? new Date().toISOString();
   const fechaVencimientoIso = parseIsoDateOrNull(req.body?.fecha_vencimiento);
+  const fallbackReactivation1 = addDaysIso(fechaEmisionIso, 7);
+  const fallbackReactivation2 = addDaysIso(fechaEmisionIso, 14);
+  const fallbackReactivation3 = addDaysIso(fechaEmisionIso, 21);
   const proximaAlertaIso = parseIsoDateOrNull(req.body?.proxima_alerta);
+  const fechaReactivacion1Iso = parseIsoDateOrNull(req.body?.fecha_reactivacion_1) ?? fallbackReactivation1;
+  const fechaReactivacion2Iso = parseIsoDateOrNull(req.body?.fecha_reactivacion_2) ?? fallbackReactivation2;
+  const fechaReactivacion3Iso = parseIsoDateOrNull(req.body?.fecha_reactivacion_3) ?? fallbackReactivation3;
+  const reactivacionActiva = parseActiveReactivationSlot(req.body?.reactivacion_activa) ?? 1;
   const notas = parseTextOrNull(req.body?.notas);
   const plazoEntrega = parseTextOrNull(req.body?.plazo_entrega);
   const formaPago = parseTextOrNull(req.body?.forma_pago);
   const lugarEntrega = parseTextOrNull(req.body?.lugar_entrega);
+  const reactivationDates = [fechaReactivacion1Iso, fechaReactivacion2Iso, fechaReactivacion3Iso] as const;
+  const activeReactivationDate = reactivationDates[reactivacionActiva - 1] ?? proximaAlertaIso ?? null;
 
   const items = Array.isArray(req.body?.items) ? (req.body.items as unknown[]) : [];
   const itemsWithProduct = items.filter((it) => parseNumericId((it as any)?.id_producto));
@@ -221,7 +259,11 @@ export async function createQuoteHandler(req: Request, res: Response) {
     plazoEntrega,
     formaPago,
     lugarEntrega,
-    proximaAlertaIso,
+    proximaAlertaIso: activeReactivationDate,
+    fechaReactivacion1Iso,
+    fechaReactivacion2Iso,
+    fechaReactivacion3Iso,
+    reactivacionActiva,
     items: itemsToInsert
   });
 
@@ -318,7 +360,14 @@ export async function updateQuoteHandler(req: Request, res: Response) {
     return;
   }
 
-  const data: { estado?: string; proxima_alerta?: string | null } = {};
+  const data: {
+    estado?: string;
+    proxima_alerta?: string | null;
+    fecha_reactivacion_1?: string | null;
+    fecha_reactivacion_2?: string | null;
+    fecha_reactivacion_3?: string | null;
+    reactivacion_activa?: number;
+  } = {};
 
   if (req.body?.estado) {
     const estadoRaw = req.body.estado.trim();
@@ -327,8 +376,58 @@ export async function updateQuoteHandler(req: Request, res: Response) {
     }
   }
 
-  if (req.body?.proxima_alerta !== undefined) {
-    data.proxima_alerta = req.body.proxima_alerta ? parseIsoDateOrNull(req.body.proxima_alerta) : null;
+  const nextActiveSlot = parseActiveReactivationSlot(req.body?.reactivacion_activa) ?? (current.reactivacion_activa as 1 | 2 | 3) ?? 1;
+  if (req.body?.reactivacion_activa !== undefined) {
+    if (!parseActiveReactivationSlot(req.body?.reactivacion_activa)) {
+      res.status(400).json({ ok: false, error: "reactivacion_activa_invalida" });
+      return;
+    }
+    data.reactivacion_activa = nextActiveSlot;
+  }
+
+  const date1 =
+    req.body?.fecha_reactivacion_1 !== undefined ? (req.body.fecha_reactivacion_1 ? parseIsoDateOrNull(req.body.fecha_reactivacion_1) : null) : current.fecha_reactivacion_1 ?? null;
+  const date2 =
+    req.body?.fecha_reactivacion_2 !== undefined ? (req.body.fecha_reactivacion_2 ? parseIsoDateOrNull(req.body.fecha_reactivacion_2) : null) : current.fecha_reactivacion_2 ?? null;
+  const date3 =
+    req.body?.fecha_reactivacion_3 !== undefined ? (req.body.fecha_reactivacion_3 ? parseIsoDateOrNull(req.body.fecha_reactivacion_3) : null) : current.fecha_reactivacion_3 ?? null;
+
+  if (req.body?.fecha_reactivacion_1 !== undefined) data.fecha_reactivacion_1 = date1;
+  if (req.body?.fecha_reactivacion_2 !== undefined) data.fecha_reactivacion_2 = date2;
+  if (req.body?.fecha_reactivacion_3 !== undefined) data.fecha_reactivacion_3 = date3;
+
+  if (req.body?.proxima_alerta !== undefined || req.body?.fecha_reactivacion_activa !== undefined) {
+    const raw = req.body?.fecha_reactivacion_activa ?? req.body?.proxima_alerta;
+    const activeDate = raw ? parseIsoDateOrNull(raw) : null;
+    if (nextActiveSlot === 1) data.fecha_reactivacion_1 = activeDate;
+    if (nextActiveSlot === 2) data.fecha_reactivacion_2 = activeDate;
+    if (nextActiveSlot === 3) data.fecha_reactivacion_3 = activeDate;
+  }
+
+  const resolvedActiveDate =
+    nextActiveSlot === 1
+      ? data.fecha_reactivacion_1 ?? date1
+      : nextActiveSlot === 2
+        ? data.fecha_reactivacion_2 ?? date2
+        : data.fecha_reactivacion_3 ?? date3;
+
+  if (
+    data.estado === "POSPUESTA" &&
+    (!resolvedActiveDate || new Date(resolvedActiveDate).getTime() <= Date.now())
+  ) {
+    res.status(400).json({ ok: false, error: "fecha_reactivacion_futura_requerida" });
+    return;
+  }
+
+  if (
+    req.body?.proxima_alerta !== undefined ||
+    req.body?.fecha_reactivacion_activa !== undefined ||
+    req.body?.reactivacion_activa !== undefined ||
+    req.body?.fecha_reactivacion_1 !== undefined ||
+    req.body?.fecha_reactivacion_2 !== undefined ||
+    req.body?.fecha_reactivacion_3 !== undefined
+  ) {
+    data.proxima_alerta = resolvedActiveDate ?? null;
   }
 
   const success = await updateQuote(id, data, companyId);
@@ -345,6 +444,32 @@ export async function updateQuoteHandler(req: Request, res: Response) {
       actionAtIso: new Date().toISOString(),
       note: null,
       metadata: { from: current.estado, to: data.estado }
+    });
+  }
+
+  const reactivationChanged =
+    data.reactivacion_activa !== undefined ||
+    data.fecha_reactivacion_1 !== undefined ||
+    data.fecha_reactivacion_2 !== undefined ||
+    data.fecha_reactivacion_3 !== undefined ||
+    req.body?.fecha_reactivacion_activa !== undefined ||
+    req.body?.proxima_alerta !== undefined;
+
+  if (reactivationChanged) {
+    await addQuoteTrackingEvent({
+      quoteId: id,
+      userId: req.user?.id ?? null,
+      actionType: "REPROGRAMACION_REACTIVACION",
+      actionAtIso: new Date().toISOString(),
+      note: null,
+      scheduledAtIso: resolvedActiveDate ?? null,
+      metadata: {
+        reactivacion_activa: nextActiveSlot,
+        fecha_reactivacion_1: data.fecha_reactivacion_1 ?? current.fecha_reactivacion_1 ?? null,
+        fecha_reactivacion_2: data.fecha_reactivacion_2 ?? current.fecha_reactivacion_2 ?? null,
+        fecha_reactivacion_3: data.fecha_reactivacion_3 ?? current.fecha_reactivacion_3 ?? null,
+        fecha_reactivacion_activa: resolvedActiveDate ?? null
+      }
     });
   }
 

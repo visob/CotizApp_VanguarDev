@@ -58,7 +58,11 @@ CREATE TABLE IF NOT EXISTS cotizaciones (
   plazo_entrega TEXT,
   forma_pago TEXT,
   lugar_entrega TEXT,
-  proxima_alerta TIMESTAMPTZ
+  proxima_alerta TIMESTAMPTZ,
+  fecha_reactivacion_1 TIMESTAMPTZ,
+  fecha_reactivacion_2 TIMESTAMPTZ,
+  fecha_reactivacion_3 TIMESTAMPTZ,
+  reactivacion_activa SMALLINT NOT NULL DEFAULT 1
 );
 
 CREATE TABLE IF NOT EXISTS items_cotizacion (
@@ -128,6 +132,10 @@ ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS plazo_entrega TEXT;
 ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS forma_pago TEXT;
 ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS lugar_entrega TEXT;
 ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS proxima_alerta TIMESTAMPTZ;
+ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS fecha_reactivacion_1 TIMESTAMPTZ;
+ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS fecha_reactivacion_2 TIMESTAMPTZ;
+ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS fecha_reactivacion_3 TIMESTAMPTZ;
+ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS reactivacion_activa SMALLINT NOT NULL DEFAULT 1;
 ALTER TABLE cotizaciones DROP COLUMN IF EXISTS mantenimiento_oferta;
 ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS descuento_porcentaje_global NUMERIC(5, 2) NOT NULL DEFAULT 0;
 
@@ -184,6 +192,11 @@ BEGIN
   SET id_empresa = default_empresa_id
   WHERE id_empresa IS NULL;
 
+  UPDATE cotizaciones
+  SET fecha_reactivacion_1 = proxima_alerta
+  WHERE fecha_reactivacion_1 IS NULL
+    AND proxima_alerta IS NOT NULL;
+
   UPDATE configuraciones
   SET id_empresa = default_empresa_id
   WHERE id_empresa IS NULL;
@@ -228,6 +241,9 @@ CREATE INDEX IF NOT EXISTS idx_usuarios_id_empresa ON usuarios(id_empresa);
 CREATE INDEX IF NOT EXISTS idx_clientes_id_empresa ON clientes(id_empresa);
 CREATE INDEX IF NOT EXISTS idx_productos_id_empresa ON productos(id_empresa);
 CREATE INDEX IF NOT EXISTS idx_cotizaciones_id_empresa ON cotizaciones(id_empresa);
+CREATE INDEX IF NOT EXISTS idx_cotizaciones_reactivacion_1 ON cotizaciones(fecha_reactivacion_1);
+CREATE INDEX IF NOT EXISTS idx_cotizaciones_reactivacion_2 ON cotizaciones(fecha_reactivacion_2);
+CREATE INDEX IF NOT EXISTS idx_cotizaciones_reactivacion_3 ON cotizaciones(fecha_reactivacion_3);
 CREATE INDEX IF NOT EXISTS idx_catalog_options_empresa_tipo_activo
   ON empresa_catalog_options (id_empresa, tipo, activo);
 CREATE INDEX IF NOT EXISTS idx_cotizaciones_id_cliente ON cotizaciones(id_cliente);

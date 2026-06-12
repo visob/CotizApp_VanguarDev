@@ -80,6 +80,19 @@ function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
+function formatDateInput(date: Date) {
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function addDays(base: Date, days: number) {
+  const next = new Date(base);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
 export default function QuotesCreate() {
   const navigate = useNavigate();
   const { showToast } = useToast();
@@ -105,11 +118,12 @@ export default function QuotesCreate() {
   const [fechaVencimiento, setFechaVencimiento] = useState<string>(() => {
     const d = new Date();
     d.setDate(d.getDate() + 30);
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    return `${yyyy}-${mm}-${dd}`;
+    return formatDateInput(d);
   });
+  const [fechaReactivacion1, setFechaReactivacion1] = useState<string>(() => formatDateInput(addDays(new Date(), 7)));
+  const [fechaReactivacion2, setFechaReactivacion2] = useState<string>(() => formatDateInput(addDays(new Date(), 14)));
+  const [fechaReactivacion3, setFechaReactivacion3] = useState<string>(() => formatDateInput(addDays(new Date(), 21)));
+  const [reactivacionActiva, setReactivacionActiva] = useState<1 | 2 | 3>(1);
 
   const [items, setItems] = useState<QuoteItemDraft[]>([
     { id_producto: "", cantidad: "1", iva_porcentaje: "" }
@@ -295,6 +309,10 @@ export default function QuotesCreate() {
         estado: "BORRADOR",
         fecha_emision: `${fechaCotizacion}T00:00:00.000Z`,
         fecha_vencimiento: `${fechaVencimiento}T00:00:00.000Z`,
+        fecha_reactivacion_1: fechaReactivacion1 ? `${fechaReactivacion1}T00:00:00.000Z` : undefined,
+        fecha_reactivacion_2: fechaReactivacion2 ? `${fechaReactivacion2}T00:00:00.000Z` : undefined,
+        fecha_reactivacion_3: fechaReactivacion3 ? `${fechaReactivacion3}T00:00:00.000Z` : undefined,
+        reactivacion_activa: reactivacionActiva,
         descuento_porcentaje_global: normalizePercentInput(descuentoPorcentajeGlobal),
         tipo_cambio: moneda === "ARS" ? "1" : "1",
         notas,
@@ -339,6 +357,10 @@ export default function QuotesCreate() {
         estado: estadoToSend,
         fecha_emision: `${fechaCotizacion}T00:00:00.000Z`,
         fecha_vencimiento: `${fechaVencimiento}T00:00:00.000Z`,
+        fecha_reactivacion_1: fechaReactivacion1 ? `${fechaReactivacion1}T00:00:00.000Z` : undefined,
+        fecha_reactivacion_2: fechaReactivacion2 ? `${fechaReactivacion2}T00:00:00.000Z` : undefined,
+        fecha_reactivacion_3: fechaReactivacion3 ? `${fechaReactivacion3}T00:00:00.000Z` : undefined,
+        reactivacion_activa: reactivacionActiva,
         descuento_porcentaje_global: normalizePercentInput(descuentoPorcentajeGlobal),
         tipo_cambio: moneda === "ARS" ? "1" : "1",
         notas,
@@ -431,7 +453,32 @@ export default function QuotesCreate() {
                 placeholder="Ej: 10.5"
               />
             </label>
+          </div>
 
+          <div className="sectionTitle" style={{ marginTop: 32 }}>Reactivación</div>
+          <div className="divider" />
+
+          <div className="quoteNewGrid">
+            <label className="field">
+              <span className="label">Fecha de reactivación 1</span>
+              <input type="date" value={fechaReactivacion1} onChange={(e) => setFechaReactivacion1(e.target.value)} className="input" />
+            </label>
+            <label className="field">
+              <span className="label">Fecha de reactivación 2</span>
+              <input type="date" value={fechaReactivacion2} onChange={(e) => setFechaReactivacion2(e.target.value)} className="input" />
+            </label>
+            <label className="field">
+              <span className="label">Fecha de reactivación 3</span>
+              <input type="date" value={fechaReactivacion3} onChange={(e) => setFechaReactivacion3(e.target.value)} className="input" />
+            </label>
+            <label className="field">
+              <span className="label">Reactivación activa</span>
+              <select value={reactivacionActiva} onChange={(e) => setReactivacionActiva(Number(e.target.value) as 1 | 2 | 3)} className="select">
+                <option value={1}>Fecha 1</option>
+                <option value={2}>Fecha 2</option>
+                <option value={3}>Fecha 3</option>
+              </select>
+            </label>
           </div>
 
           <div className="sectionTitle">Productos</div>

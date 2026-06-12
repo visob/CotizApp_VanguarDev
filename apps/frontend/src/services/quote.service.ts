@@ -10,6 +10,10 @@ export type QuoteListItem = {
   cliente_nombre_empresa: string;
   cliente_clasificacion: string | null;
   proxima_alerta: string | null;
+  fecha_reactivacion_1?: string | null;
+  fecha_reactivacion_2?: string | null;
+  fecha_reactivacion_3?: string | null;
+  reactivacion_activa?: number;
 };
 
 export async function listQuotes(input?: {
@@ -42,6 +46,10 @@ export type CreateQuoteInput = {
   forma_pago?: string;
   lugar_entrega?: string;
   proxima_alerta?: string;
+  fecha_reactivacion_1?: string;
+  fecha_reactivacion_2?: string;
+  fecha_reactivacion_3?: string;
+  reactivacion_activa?: number;
   items: Array<{
     id_producto: number;
     cantidad: number;
@@ -105,6 +113,10 @@ export type QuoteDetailResult = {
     forma_pago: string | null;
     lugar_entrega: string | null;
     proxima_alerta: string | null;
+    fecha_reactivacion_1: string | null;
+    fecha_reactivacion_2: string | null;
+    fecha_reactivacion_3: string | null;
+    reactivacion_activa: number;
   };
   items: QuoteDetailItem[];
   client: {
@@ -120,12 +132,36 @@ export async function getQuote(id: number) {
   return apiRequest<QuoteDetailResult>({ path: `/api/quotes/${id}` });
 }
 
-export async function updateQuote(id: number, data: { estado?: string; proxima_alerta?: string | null }) {
+export async function updateQuote(
+  id: number,
+  data: {
+    estado?: string;
+    proxima_alerta?: string | null;
+    fecha_reactivacion_activa?: string | null;
+    fecha_reactivacion_1?: string | null;
+    fecha_reactivacion_2?: string | null;
+    fecha_reactivacion_3?: string | null;
+    reactivacion_activa?: number;
+  }
+) {
   return apiRequest<{ ok: true }>({
     path: `/api/quotes/${id}`,
     method: "PATCH",
     body: data
   });
+}
+
+export type QuoteReactivationAlert = QuoteListItem & {
+  id_cliente: number;
+  id_usuario: number;
+  fecha_reactivacion_activa: string;
+};
+
+export async function listReactivationAlerts() {
+  const result = await apiRequest<{ ok: true; items: QuoteReactivationAlert[] }>({
+    path: "/api/quotes/reactivation-alerts"
+  });
+  return result.items;
 }
 
 export type QuoteTrackingEvent = {

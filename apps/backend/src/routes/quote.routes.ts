@@ -3,6 +3,7 @@ import {
   createQuoteHandler,
   getQuotePdfHandler,
   listQuotesHandler,
+  listReactivationAlertsHandler,
   getQuoteHandler,
   updateQuoteHandler
 } from "../controllers/quote.controller.js";
@@ -11,6 +12,7 @@ import { addTrackingEvent, listTrackingEvents } from "../controllers/tracking.co
 export const quoteRouter = Router();
 
 quoteRouter.get("/", listQuotesHandler);
+quoteRouter.get("/reactivation-alerts", listReactivationAlertsHandler);
 quoteRouter.post("/", createQuoteHandler);
 quoteRouter.get("/:id", getQuoteHandler);
 quoteRouter.patch("/:id", updateQuoteHandler);
