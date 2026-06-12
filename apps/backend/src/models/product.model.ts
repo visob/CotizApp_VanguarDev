@@ -24,6 +24,8 @@ export type ProductInput = {
   garantia: string | null;
 };
 
+type DuplicateProductResult = "duplicate_nombre" | "duplicate_sku" | null;
+
 export async function listProducts(companyId?: number | null) {
   const values: unknown[] = [];
   const whereSql =
@@ -83,6 +85,56 @@ export async function createProduct(companyId: number, input: ProductInput) {
     ]
   );
   return result.rows[0];
+}
+
+export async function findDuplicateProduct(
+  companyId: number,
+  input: Pick<ProductInput, "nombre" | "sku">,
+  excludeId?: number
+): Promise<DuplicateProductResult> {
+  const baseValues: unknown[] = [companyId];
+  const excludeSql =
+    excludeId !== undefined
+      ? (() => {
+          baseValues.push(excludeId);
+          return `and id <> $${baseValues.length}`;
+        })()
+      : "";
+
+  const nameResult = await pool.query<{ id: string | number }>(
+    `
+      select id
+      from productos
+      where id_empresa = $1
+        and lower(trim(nombre)) = lower(trim($${baseValues.length + 1}))
+        ${excludeSql}
+      limit 1
+    `,
+    [...baseValues, input.nombre]
+  );
+
+  if (nameResult.rows[0]) {
+    return "duplicate_nombre";
+  }
+
+  if (!input.sku) {
+    return null;
+  }
+
+  const skuResult = await pool.query<{ id: string | number }>(
+    `
+      select id
+      from productos
+      where id_empresa = $1
+        and sku is not null
+        and lower(trim(sku)) = lower(trim($${baseValues.length + 1}))
+        ${excludeSql}
+      limit 1
+    `,
+    [...baseValues, input.sku]
+  );
+
+  return skuResult.rows[0] ? "duplicate_sku" : null;
 }
 
 export async function updateProduct(id: number, input: ProductInput, companyId?: number | null) {

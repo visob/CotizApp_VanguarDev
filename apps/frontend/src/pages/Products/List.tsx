@@ -2,10 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ActionMenu } from "../../components/common/ActionMenu";
 import { Button } from "../../components/common/Button";
+import { useToast } from "../../context/ToastContext";
 import type { Product } from "../../types";
 import * as productService from "../../services/product.service";
 import { formatMoney } from "../../utils/currency";
 import { SearchIcon, FilterIcon } from "../../components/common/Icons";
+import { getErrorMessage } from "../../utils/feedback";
 import "../../styles/products.css";
 
 function parseMoney(value: string) {
@@ -22,6 +24,14 @@ export function ProductsList() {
   const [statusModalProduct, setStatusModalProduct] = useState<Product | null>(null);
   const [newStatus, setNewStatus] = useState("Activo");
   const navigate = useNavigate();
+  const { showToast } = useToast();
+
+  const errorMessages: Record<string, string> = {
+    duplicate_nombre: "Ya existe un producto con ese nombre en esta empresa.",
+    duplicate_sku: "Ya existe un producto con ese SKU en esta empresa.",
+    stock_invalido: "El stock ingresado no es válido.",
+    estado_invalido: "El estado seleccionado no es válido."
+  };
 
   function normalizeProductStatus(status: string | null | undefined) {
     const value = (status ?? "").trim().toLowerCase();
@@ -49,7 +59,7 @@ export function ProductsList() {
       const data = await productService.listProducts();
       setItems(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "load_error");
+      setError(getErrorMessage(err, {}, "No se pudieron cargar los productos"));
     } finally {
       setLoading(false);
     }
@@ -87,8 +97,9 @@ export function ProductsList() {
       });
       setItems((prev) => prev.map((item) => (item.id === id ? updated : item)));
       setStatusModalProduct(null);
+      showToast({ type: "success", text: "Estado del producto actualizado" });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "update_error");
+      setError(getErrorMessage(err, errorMessages, "No se pudo actualizar el estado del producto"));
     }
   }
 

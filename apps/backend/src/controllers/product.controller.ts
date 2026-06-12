@@ -2,11 +2,14 @@ import type { Request, Response } from "express";
 import {
   createProduct,
   deleteProduct,
+  findDuplicateProduct,
   getProductById,
   listProducts,
   updateProduct
 } from "../models/product.model.js";
 import { getCompanyIdForWrite, getScopedCompanyId, parseNumericId } from "../utils/request-scope.js";
+
+const allowedProductStates = new Set(["Activo", "Pausado", "Desactivado"]);
 
 function parsePrice(value: unknown) {
   const n =
@@ -24,7 +27,7 @@ function parseStock(value: unknown) {
     return null;
   }
   const int = Math.trunc(n);
-  return int >= 0 ? int : null;
+  return int >= -1 ? int : null;
 }
 
 function toNonEmptyString(value: unknown) {
@@ -93,6 +96,17 @@ export async function createProductHandler(req: Request, res: Response) {
     return;
   }
 
+  if (!allowedProductStates.has(estado)) {
+    res.status(400).json({ ok: false, error: "estado_invalido" });
+    return;
+  }
+
+  const duplicate = await findDuplicateProduct(companyId, { nombre, sku });
+  if (duplicate) {
+    res.status(409).json({ ok: false, error: duplicate });
+    return;
+  }
+
   const item = await createProduct(companyId, {
     nombre,
     precio_ars: String(precioArs),
@@ -140,6 +154,17 @@ export async function updateProductHandler(req: Request, res: Response) {
 
   if (stock === null) {
     res.status(400).json({ ok: false, error: "stock_invalido" });
+    return;
+  }
+
+  if (!allowedProductStates.has(estado)) {
+    res.status(400).json({ ok: false, error: "estado_invalido" });
+    return;
+  }
+
+  const duplicate = await findDuplicateProduct(companyId, { nombre, sku }, id);
+  if (duplicate) {
+    res.status(409).json({ ok: false, error: duplicate });
     return;
   }
 

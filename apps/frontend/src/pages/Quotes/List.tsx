@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ActionMenu } from "../../components/common/ActionMenu";
 import { Button } from "../../components/common/Button";
+import { useToast } from "../../context/ToastContext";
 import * as quoteService from "../../services/quote.service";
+import { getErrorMessage } from "../../utils/feedback";
 import "../../styles/quotes.css";
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -18,6 +20,7 @@ function downloadBlob(blob: Blob, filename: string) {
 
 export default function QuotesList() {
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -72,7 +75,7 @@ export default function QuotesList() {
       });
       setQuotes(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "load_error");
+      setError(getErrorMessage(err, {}, "No se pudieron cargar las cotizaciones"));
     } finally {
       setLoading(false);
     }
@@ -135,9 +138,10 @@ export default function QuotesList() {
     try {
       await quoteService.updateQuote(statusModalQuote.id, { estado: newStatus });
       setStatusModalQuote(null);
+      showToast({ type: "success", text: "Estado de la cotización actualizado" });
       void reloadQuotes();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "update_error");
+      setError(getErrorMessage(err, {}, "No se pudo actualizar el estado"));
     }
   }
 
@@ -148,9 +152,10 @@ export default function QuotesList() {
         proxima_alerta: newAlertDate ? `${newAlertDate}T00:00:00.000Z` : null
       });
       setAlertModalQuote(null);
+      showToast({ type: "success", text: "Alerta actualizada correctamente" });
       void reloadQuotes();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "update_error");
+      setError(getErrorMessage(err, {}, "No se pudo actualizar la alerta"));
     }
   }
 
@@ -272,7 +277,7 @@ export default function QuotesList() {
                                 const pdf = await quoteService.downloadQuotePdf(r.id);
                                 downloadBlob(pdf.blob, pdf.filename ?? `cotizacion-${r.id}.pdf`);
                               } catch (err) {
-                                setError(err instanceof Error ? err.message : "download_error");
+                                setError(getErrorMessage(err, {}, "No se pudo descargar el PDF"));
                               }
                             }
                           }

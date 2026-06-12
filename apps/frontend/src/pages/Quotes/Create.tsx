@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../../components/common/Button";
+import { useToast } from "../../context/ToastContext";
 import type { CatalogOption, Client, CurrencyCode, Product } from "../../types";
 import * as clientService from "../../services/client.service";
 import * as configService from "../../services/config.service";
 import * as productService from "../../services/product.service";
 import * as quoteService from "../../services/quote.service";
+import { getErrorMessage } from "../../utils/feedback";
 import "../../styles/quotes.css"; // assuming there's quotes.css, or just keep layout.css if it's there
 
 type QuoteItemDraft = {
@@ -77,6 +79,7 @@ function downloadBlob(blob: Blob, filename: string) {
 
 export default function QuotesCreate() {
   const navigate = useNavigate();
+  const { showToast } = useToast();
 
   const [clients, setClients] = useState<Client[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -268,7 +271,7 @@ export default function QuotesCreate() {
     setSaving(true);
     try {
       const payloadItems = parseNewItemsForPayload();
-      const created = await quoteService.createQuote({
+      await quoteService.createQuote({
         id_cliente: idClienteNum,
         moneda,
         estado: "BORRADOR",
@@ -282,9 +285,10 @@ export default function QuotesCreate() {
         lugar_entrega: lugarEntrega,
         items: payloadItems
       });
+      showToast({ type: "success", text: "Borrador guardado correctamente" });
       navigate("/quotes");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "save_error");
+      setError(getErrorMessage(err, {}, "No se pudo guardar el borrador"));
       setSaving(false);
     }
   }
@@ -324,9 +328,10 @@ export default function QuotesCreate() {
 
       const pdf = await quoteService.downloadQuotePdf(created.id);
       downloadBlob(pdf.blob, pdf.filename ?? `cotizacion-${created.id}.pdf`);
+      showToast({ type: "success", text: "Cotización generada correctamente" });
       navigate("/quotes");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "save_error");
+      setError(getErrorMessage(err, {}, "No se pudo generar la cotización"));
       setSaving(false);
     }
   }

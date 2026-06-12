@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button } from "../../components/common/Button";
+import { useToast } from "../../context/ToastContext";
 import * as productService from "../../services/product.service";
 import * as configService from "../../services/config.service";
 import type { Product } from "../../types";
 import { ReturnIcon } from "../../components/common/Icons";
+import { getErrorMessage } from "../../utils/feedback";
 import "../../styles/products.css";
 
 type ProductDraft = Omit<Product, "id">;
@@ -20,6 +22,15 @@ const emptyDraft: ProductDraft = {
   estado: "Activo"
 };
 
+const productErrorMessages: Record<string, string> = {
+  nombre_required: "El nombre del producto es obligatorio.",
+  precio_ars_y_usd_requeridos: "Debes informar precios validos para ARS y USD.",
+  stock_invalido: "El stock debe ser un numero entero mayor o igual a 0, o dejarse vacio para ilimitado.",
+  duplicate_nombre: "Ya existe un producto con ese nombre en esta empresa.",
+  duplicate_sku: "Ya existe un producto con ese SKU en esta empresa.",
+  estado_invalido: "El estado seleccionado no es valido."
+};
+
 export function ProductCreate() {
   const { id } = useParams();
   const isEditMode = Boolean(id);
@@ -28,6 +39,7 @@ export function ProductCreate() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { showToast } = useToast();
 
   const [exchangeRate, setExchangeRate] = useState(1000); // Default fallback
 
@@ -98,10 +110,16 @@ export function ProductCreate() {
       return;
     }
 
-    let ars = parseFloat(draft.precio_ars.replace(",", "."));
-    let usd = parseFloat(draft.precio_usd.replace(",", "."));
-    if (isNaN(ars) && isNaN(usd)) {
-      setError("Debes ingresar el precio en ARS o USD");
+    const arsText = draft.precio_ars.trim();
+    const usdText = draft.precio_usd.trim();
+    let ars = parseFloat(arsText.replace(",", "."));
+    let usd = parseFloat(usdText.replace(",", "."));
+    if (!arsText && !usdText) {
+      setError("Debes ingresar al menos un precio");
+      return;
+    }
+    if ((!Number.isNaN(ars) && ars < 0) || (!Number.isNaN(usd) && usd < 0)) {
+      setError("Los precios no pueden ser negativos");
       return;
     }
     if (isNaN(ars)) ars = 0;
@@ -110,6 +128,10 @@ export function ProductCreate() {
     let stockParsed = parseInt(stockInput.trim(), 10);
     if (isNaN(stockParsed) || stockInput.trim() === "") {
       stockParsed = -1; // Ilimitado
+    }
+    if (stockParsed < -1) {
+      setError("El stock no puede ser negativo");
+      return;
     }
 
     setLoading(true);
@@ -124,13 +146,15 @@ export function ProductCreate() {
 
       if (isEditMode && id) {
         await productService.updateProduct(Number(id), payload);
+        showToast({ type: "success", text: "Producto actualizado correctamente" });
       } else {
         await productService.createProduct(payload);
+        showToast({ type: "success", text: "Producto creado correctamente" });
       }
 
       navigate("/products");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al guardar");
+      setError(getErrorMessage(err, productErrorMessages, "No se pudo guardar el producto"));
     } finally {
       setLoading(false);
     }

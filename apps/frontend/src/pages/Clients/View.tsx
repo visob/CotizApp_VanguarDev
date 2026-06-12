@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button } from "../../components/common/Button";
+import { useToast } from "../../context/ToastContext";
 import * as clientService from "../../services/client.service";
 import type { Client } from "../../types";
+import { getErrorMessage } from "../../utils/feedback";
 import "../../styles/clients.css";
 
 const ReturnIcon = () => (
@@ -85,6 +87,7 @@ export function ClientView() {
   const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { showToast } = useToast();
 
   useEffect(() => {
     async function load() {
@@ -100,7 +103,7 @@ export function ClientView() {
           setError("Cliente no encontrado");
         }
       } catch (err) {
-        setError("Error cargando cliente");
+        setError(getErrorMessage(err, {}, "Error cargando cliente"));
       } finally {
         setLoading(false);
       }
@@ -232,9 +235,13 @@ export function ClientView() {
             <Button className="btn--icon"><PlusIcon /></Button>
             <Button className="btn--icon"><EditIcon /></Button>
             <Button className="btn--icon" onClick={async () => {
-              if (window.confirm("¿Seguro que deseas eliminar este cliente?")) {
+              if (!window.confirm("¿Seguro que deseas eliminar este cliente?")) return;
+              try {
                 await clientService.deleteClient(client.id);
+                showToast({ type: "success", text: "Cliente eliminado correctamente" });
                 navigate("/clients");
+              } catch (err) {
+                setError(getErrorMessage(err, {}, "No se pudo eliminar el cliente"));
               }
             }}><TrashIcon /></Button>
           </div>

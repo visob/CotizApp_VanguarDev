@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "../../components/common/Button";
+import { useToast } from "../../context/ToastContext";
 import * as quoteService from "../../services/quote.service";
+import { getErrorMessage } from "../../utils/feedback";
 import "../../styles/quotes.css";
 
 function formatDate(iso: string | null) {
@@ -17,7 +19,7 @@ export default function QuotesView() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [info, setInfo] = useState<string | null>(null);
+  const { showToast } = useToast();
 
   const [data, setData] = useState<quoteService.QuoteDetailResult | null>(null);
 
@@ -34,7 +36,7 @@ export default function QuotesView() {
       setEstado(res.quote.estado);
       setProximaAlerta(res.quote.proxima_alerta ? res.quote.proxima_alerta.split("T")[0] : "");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "load_error");
+      setError(getErrorMessage(err, {}, "No se pudo cargar la cotización"));
     } finally {
       setLoading(false);
     }
@@ -48,16 +50,15 @@ export default function QuotesView() {
     if (!id || !data) return;
     setSaving(true);
     setError(null);
-    setInfo(null);
     try {
       await quoteService.updateQuote(Number(id), {
         estado,
         proxima_alerta: proximaAlerta ? `${proximaAlerta}T00:00:00.000Z` : null
       });
-      setInfo("Cambios guardados");
+      showToast({ type: "success", text: "Cotización actualizada correctamente" });
       void loadData(); // reload
     } catch (err) {
-      setError(err instanceof Error ? err.message : "save_error");
+      setError(getErrorMessage(err, {}, "No se pudo guardar la cotización"));
     } finally {
       setSaving(false);
     }
@@ -94,8 +95,6 @@ export default function QuotesView() {
         </div>
 
         {error ? <div className="error">{error}</div> : null}
-        {info ? <div className="success">{info}</div> : null}
-
         <div className="sectionTitle">Datos generales (Solo lectura)</div>
         <div className="divider" />
 

@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ActionMenu } from "../../components/common/ActionMenu";
 import { Button } from "../../components/common/Button";
+import { useToast } from "../../context/ToastContext";
 import type { Client } from "../../types";
+import { getErrorMessage } from "../../utils/feedback";
 import * as clientService from "../../services/client.service";
 import "../../styles/clients.css";
 
@@ -40,6 +42,14 @@ export function ClientsList() {
   const [statusModalClient, setStatusModalClient] = useState<Client | null>(null);
   const [newStatus, setNewStatus] = useState("Activo");
   const navigate = useNavigate();
+  const { showToast } = useToast();
+
+  const errorMessages: Record<string, string> = {
+    duplicate_nombre_empresa: "Ya existe un cliente con esa razón social en esta empresa.",
+    duplicate_cuit_tax_id: "Ya existe un cliente con ese CUIT en esta empresa.",
+    email_invalido: "Ingresá un email válido.",
+    estado_invalido: "El estado seleccionado no es válido."
+  };
 
   async function reload() {
     setLoading(true);
@@ -48,7 +58,7 @@ export function ClientsList() {
       const data = await clientService.listClients();
       setItems(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "load_error");
+      setError(getErrorMessage(err, {}, "No se pudieron cargar los clientes"));
     } finally {
       setLoading(false);
     }
@@ -87,8 +97,9 @@ export function ClientsList() {
       });
       setItems((prev) => prev.map((item) => (item.id === id ? updated : item)));
       setStatusModalClient(null);
+      showToast({ type: "success", text: "Estado del cliente actualizado" });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "update_error");
+      setError(getErrorMessage(err, errorMessages, "No se pudo actualizar el estado del cliente"));
     }
   }
 

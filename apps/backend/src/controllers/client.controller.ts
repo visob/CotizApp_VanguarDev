@@ -2,11 +2,19 @@ import type { Request, Response } from "express";
 import {
   createClient,
   deleteClient,
+  findDuplicateClient,
   getClientById,
   listClients,
   updateClient
 } from "../models/client.model.js";
 import { getCompanyIdForWrite, getScopedCompanyId, parseNumericId } from "../utils/request-scope.js";
+
+const allowedClientStates = new Set(["Activo", "Pausado", "Desactivado", "Baja"]);
+
+function isValidEmail(value: string | null) {
+  if (!value) return true;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
 
 function toNullableString(value: unknown) {
   if (value === undefined || value === null) {
@@ -71,6 +79,22 @@ export async function createClientHandler(req: Request, res: Response) {
   const estado = toNullableString(req.body?.estado) ?? "Activo";
   const ult_contacto = toNullableString(req.body?.ult_contacto);
 
+  if (!allowedClientStates.has(estado)) {
+    res.status(400).json({ ok: false, error: "estado_invalido" });
+    return;
+  }
+
+  if (!isValidEmail(email)) {
+    res.status(400).json({ ok: false, error: "email_invalido" });
+    return;
+  }
+
+  const duplicate = await findDuplicateClient(companyId, { nombre_empresa, cuit_tax_id });
+  if (duplicate) {
+    res.status(409).json({ ok: false, error: duplicate });
+    return;
+  }
+
   const item = await createClient(companyId, {
     nombre_empresa,
     contacto_principal,
@@ -118,6 +142,22 @@ export async function updateClientHandler(req: Request, res: Response) {
   const provincia = toNullableString(req.body?.provincia);
   const estado = toNullableString(req.body?.estado) ?? "Activo";
   const ult_contacto = toNullableString(req.body?.ult_contacto);
+
+  if (!allowedClientStates.has(estado)) {
+    res.status(400).json({ ok: false, error: "estado_invalido" });
+    return;
+  }
+
+  if (!isValidEmail(email)) {
+    res.status(400).json({ ok: false, error: "email_invalido" });
+    return;
+  }
+
+  const duplicate = await findDuplicateClient(companyId, { nombre_empresa, cuit_tax_id }, id);
+  if (duplicate) {
+    res.status(409).json({ ok: false, error: duplicate });
+    return;
+  }
 
   const item = await updateClient(id, {
     nombre_empresa,

@@ -32,6 +32,8 @@ export type ClientInput = {
   ult_contacto: Date | string | null;
 };
 
+type DuplicateClientResult = "duplicate_nombre_empresa" | "duplicate_cuit_tax_id" | null;
+
 export async function listClients(companyId?: number | null) {
   const values: unknown[] = [];
   const whereSql =
@@ -95,6 +97,56 @@ export async function createClient(companyId: number, input: ClientInput) {
     ]
   );
   return result.rows[0];
+}
+
+export async function findDuplicateClient(
+  companyId: number,
+  input: Pick<ClientInput, "nombre_empresa" | "cuit_tax_id">,
+  excludeId?: number
+): Promise<DuplicateClientResult> {
+  const baseValues: unknown[] = [companyId];
+  const excludeSql =
+    excludeId !== undefined
+      ? (() => {
+          baseValues.push(excludeId);
+          return `and id <> $${baseValues.length}`;
+        })()
+      : "";
+
+  const nameResult = await pool.query<{ id: string | number }>(
+    `
+      select id
+      from clientes
+      where id_empresa = $1
+        and lower(trim(nombre_empresa)) = lower(trim($${baseValues.length + 1}))
+        ${excludeSql}
+      limit 1
+    `,
+    [...baseValues, input.nombre_empresa]
+  );
+
+  if (nameResult.rows[0]) {
+    return "duplicate_nombre_empresa";
+  }
+
+  if (!input.cuit_tax_id) {
+    return null;
+  }
+
+  const cuitResult = await pool.query<{ id: string | number }>(
+    `
+      select id
+      from clientes
+      where id_empresa = $1
+        and cuit_tax_id is not null
+        and trim(cuit_tax_id) = trim($${baseValues.length + 1})
+        ${excludeSql}
+      limit 1
+    `,
+    [...baseValues, input.cuit_tax_id]
+  );
+
+  return cuitResult.rows[0] ? "duplicate_cuit_tax_id" : null;
 }
 
 export async function updateClient(id: number, input: ClientInput, companyId?: number | null) {

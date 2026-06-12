@@ -1,0 +1,35 @@
+.toastViewport {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 120;
+  pointer-events: none;
+}
+
+.toast {
+  min-width: 260px;
+  max-width: 420px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.14);
+  font-size: 14px;
+  font-weight: 500;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.toast--success {
+  border-color: rgba(22, 101, 52, 0.18);
+  background: #ecfdf3;
+  color: #166534;
+}
+
+.toast--error {
+  border-color: rgba(153, 27, 27, 0.18);
+  background: #fef2f2;
+  color: #991b1b;
+}

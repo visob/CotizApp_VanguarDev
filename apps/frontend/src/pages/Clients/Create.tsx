@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button } from "../../components/common/Button";
 import * as clientService from "../../services/client.service";
+import { useToast } from "../../context/ToastContext";
 import type { Client } from "../../types";
+import { getErrorMessage } from "../../utils/feedback";
 import "../../styles/clients.css";
 
 type ClientDraft = Omit<Client, "id">;
@@ -20,6 +22,14 @@ const emptyDraft: ClientDraft = {
   estado: "Activo"
 };
 
+const clientErrorMessages: Record<string, string> = {
+  nombre_empresa_required: "La razón social es obligatoria.",
+  email_invalido: "Ingresá un email válido.",
+  duplicate_nombre_empresa: "Ya existe un cliente con esa razón social en esta empresa.",
+  duplicate_cuit_tax_id: "Ya existe un cliente con ese CUIT en esta empresa.",
+  estado_invalido: "El estado seleccionado no es válido."
+};
+
 const ReturnIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
     <path d="M9 14L4 9M4 9L9 4M4 9H14C17.866 9 21 12.134 21 16C21 19.866 17.866 23 14 23H10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -33,6 +43,20 @@ export function ClientCreate() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { showToast } = useToast();
+
+  function validateDraft() {
+    const nombre = draft.nombre_empresa?.trim();
+    if (!nombre) {
+      return "El nombre / razón social es obligatorio";
+    }
+
+    if (draft.email?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(draft.email.trim())) {
+      return "Ingresá un email válido";
+    }
+
+    return null;
+  }
 
   useEffect(() => {
     if (!id) return;
@@ -59,11 +83,12 @@ export function ClientCreate() {
 
   async function onSave() {
     setError(null);
-    const nombre = draft.nombre_empresa?.trim();
-    if (!nombre) {
-      setError("El nombre / razón social es obligatorio");
+    const validationError = validateDraft();
+    if (validationError) {
+      setError(validationError);
       return;
     }
+    const nombre = draft.nombre_empresa.trim();
 
     setLoading(true);
     try {
@@ -74,13 +99,15 @@ export function ClientCreate() {
 
       if (isEditMode && id) {
         await clientService.updateClient(Number(id), payload);
+        showToast({ type: "success", text: "Cliente actualizado correctamente" });
       } else {
         await clientService.createClient(payload);
+        showToast({ type: "success", text: "Cliente creado correctamente" });
       }
 
       navigate("/clients");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al guardar");
+      setError(getErrorMessage(err, clientErrorMessages, "No se pudo guardar el cliente"));
     } finally {
       setLoading(false);
     }
