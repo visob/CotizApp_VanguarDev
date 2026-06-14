@@ -105,43 +105,42 @@ export function ProductsList() {
 
   return (
     <div className="page">
-      <div className="pageHeader">
-        <div>
-          <h1 className="pageTitle">Productos</h1>
-          <div className="pageSubtitle">Visualizá y gestioná tu catálogo de productos</div>
+      <div>
+        <div className="pageHeader">
+          <div>
+            <h1 className="pageTitle">Productos</h1>
+            <div className="pageSubtitle">Visualizá y gestioná tu catálogo de productos</div>
+          </div>
+          <div className="actions">
+            <Button className="btn--ghost">
+              <span style={{ marginRight: 8 }}>↑</span> Importar
+            </Button>
+            <Button className="btn--ghost">
+              <span style={{ marginRight: 8 }}>↓</span> Exportar lista
+            </Button>
+            <Button onClick={() => navigate("/products/new")} className="btn--primary">
+              + Nuevo producto
+            </Button>
+          </div>
         </div>
-        <div className="productsHeaderActions">
-          <Button className="btn--importExport">
-            <span className="btn--importExportIcon">↑</span> Importar
-          </Button>
-          <Button className="btn--importExport">
-            <span className="btn--importExportIcon">↓</span> Exportar lista
-          </Button>
-          <Button onClick={() => navigate("/products/new")} className="btn--newProduct">
-            + Nuevo producto
-          </Button>
+
+        <div className="pageTabs">
+          <button className={`pageTabPill ${activeTab === "Todos" ? "pageTabPill--active" : ""}`} onClick={() => setActiveTab("Todos")}>Todos</button>
+          <button className={`pageTabPill ${activeTab === "Activos" ? "pageTabPill--active" : ""}`} onClick={() => setActiveTab("Activos")}>Activos</button>
+          <button className={`pageTabPill ${activeTab === "Desactivados" ? "pageTabPill--active" : ""}`} onClick={() => setActiveTab("Desactivados")}>Desactivados</button>
         </div>
-      </div>
 
-      <div className="clientsTabs">
-        <button className={`tabPill ${activeTab === "Todos" ? "tabPill--active" : ""}`} onClick={() => setActiveTab("Todos")}>Todos</button>
-        <button className={`tabPill ${activeTab === "Activos" ? "tabPill--active" : ""}`} onClick={() => setActiveTab("Activos")}>Activos</button>
-        <button className={`tabPill ${activeTab === "Desactivados" ? "tabPill--active" : ""}`} onClick={() => setActiveTab("Desactivados")}>Desactivados</button>
-        <button className="tabPill tabPill--icon">+</button>
-      </div>
-
-      <div className="toolbar">
-        <div className="searchBar">
+        <div className="filterToolbar">
           <input
+            className="searchBarInput"
             placeholder="Buscar..."
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
           />
-          <div className="searchIconWrapper"><SearchIcon /></div>
+          <Button className="btn--ghost" style={{ display: "flex", gap: 8 }}>
+            <FilterIcon /> Filtrar
+          </Button>
         </div>
-        <Button className="btn--filter">
-          <FilterIcon /> Filtrar
-        </Button>
       </div>
 
       {error ? <div className="error">{error}</div> : null}

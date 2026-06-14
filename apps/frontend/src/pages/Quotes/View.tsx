@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "../../components/common/Button";
-import { NoteIcon } from "../../components/common/Icons";
+import { NoteIcon, ReturnIcon } from "../../components/common/Icons";
 import { useToast } from "../../context/ToastContext";
 import * as quoteService from "../../services/quote.service";
 import { getErrorMessage } from "../../utils/feedback";
@@ -217,7 +217,9 @@ export default function QuotesView() {
     return (
       <div className="page">
         {error ? <div className="error">{error}</div> : <div className="error">Cotización no encontrada</div>}
-        <Button onClick={() => navigate("/quotes")} className="btn--ghost" style={{ marginTop: 16 }}>Volver a cotizaciones</Button>
+        <Button onClick={() => navigate("/quotes")} className="btn--ghost" style={{ marginTop: 16, border: "none", fontWeight: 600, display: "flex", gap: 8 }}>
+          <ReturnIcon /> Volver a cotizaciones
+        </Button>
       </div>
     );
   }
@@ -245,8 +247,8 @@ export default function QuotesView() {
             >
               <NoteIcon />
             </Button>
-            <Button onClick={() => navigate("/quotes")} disabled={saving} className="btn--ghost">
-              Volver
+            <Button onClick={() => navigate("/quotes")} disabled={saving} className="btn--ghost" style={{ border: "none", fontWeight: 600, display: "flex", gap: 8 }}>
+              <ReturnIcon /> Volver
             </Button>
           </div>
         </div>

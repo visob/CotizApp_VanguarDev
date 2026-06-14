@@ -162,7 +162,7 @@ export function ProductCreate() {
 
   return (
     <div className="page">
-      <div className="productsPageHeader">
+      <div className="pageHeader" style={{ borderBottom: "1px solid var(--border)", paddingBottom: 24, marginBottom: 8 }}>
         <div>
           <h1 className="pageTitle">Productos</h1>
           <div className="pageSubtitle productsPageSubtitle">
@@ -172,93 +172,104 @@ export function ProductCreate() {
           </div>
         </div>
         <div className="actions">
-          <Button onClick={() => navigate("/products")} className="btn--ghost btn--return">
+          <Button onClick={() => navigate("/products")} className="btn--ghost" style={{ border: "none", fontWeight: 600, display: "flex", gap: 8 }}>
             <ReturnIcon /> Volver
           </Button>
         </div>
       </div>
 
-      <div className="stack createStack">
-        <h2 className="createTitle">{isEditMode ? "Editar producto" : "Nuevo producto"}</h2>
+      <div className="stack">
+        <div className="sectionTitle" style={{ marginTop: 8 }}>Datos generales</div>
+        <div className="divider" />
         
-        <div className="formGrid formGrid--2 formGrid--gap">
-          {/* Left Column */}
-          <div className="formCol">
-            <label className="field">
-              <span className="label">Nombre</span>
-              <input
-                value={draft.nombre}
-                onChange={(e) => setDraft((d) => ({ ...d, nombre: e.target.value }))}
-                className="input formInput"
-              />
-            </label>
-            <label className="field flex-1">
-              <span className="label">Descripción</span>
-              <textarea
-                value={draft.descripcion ?? ""}
-                onChange={(e) => setDraft((d) => ({ ...d, descripcion: e.target.value }))}
-                className="textarea formTextarea"
-              />
-            </label>
-          </div>
+        <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(2, 1fr)' }}>
+          <label className="field">
+            <span className="label">Nombre</span>
+            <input
+              value={draft.nombre}
+              onChange={(e) => setDraft((d) => ({ ...d, nombre: e.target.value }))}
+              className="input"
+            />
+          </label>
 
-          {/* Right Column */}
-          <div className="formCol">
-            <label className="field">
-              <span className="label">SKU</span>
-              <input
-                value={draft.sku ?? ""}
-                onChange={(e) => setDraft((d) => ({ ...d, sku: e.target.value }))}
-                className="input formInput"
-              />
-            </label>
-            <label className="field">
-              <span className="label">Stock</span>
-              <input
-                placeholder="Ilimitado"
-                value={stockInput}
-                onChange={(e) => setStockInput(e.target.value)}
-                className="input formInput"
-              />
-            </label>
-            
-            <div className="flexRow">
-              <label className="field flex-1">
-                <span className="label">Precio USD</span>
-                <input
-                  value={draft.precio_usd}
-                  onChange={(e) => handleUsdChange(e.target.value)}
-                  className="input formInput"
-                />
-              </label>
-              <label className="field flex-1">
-                <span className="label">Precio ARS (Tasa ${exchangeRate})</span>
-                <input
-                  value={draft.precio_ars}
-                  onChange={(e) => handleArsChange(e.target.value)}
-                  className="input formInput"
-                />
-              </label>
-            </div>
+          <label className="field">
+            <span className="label">SKU</span>
+            <input
+              value={draft.sku ?? ""}
+              onChange={(e) => setDraft((d) => ({ ...d, sku: e.target.value }))}
+              className="input"
+            />
+          </label>
 
-            <label className="field">
-              <span className="label">Garantía</span>
-              <select
-                value={draft.garantia ?? ""}
-                onChange={(e) => setDraft((d) => ({ ...d, garantia: e.target.value }))}
-                className="select formInput"
-              >
-                <option value="Sin garantía">Sin garantía</option>
-                <option value="6 meses">6 meses</option>
-                <option value="12 meses">12 meses</option>
-                <option value="24 meses">24 meses</option>
-              </select>
-            </label>
-          </div>
+          <label className="field">
+            <span className="label">Stock</span>
+            <input
+              placeholder="Ilimitado"
+              value={stockInput}
+              onChange={(e) => setStockInput(e.target.value)}
+              className="input"
+            />
+          </label>
+
+          <label className="field">
+            <span className="label">Garantía</span>
+            <select
+              value={draft.garantia ?? ""}
+              onChange={(e) => setDraft((d) => ({ ...d, garantia: e.target.value }))}
+              className="select"
+            >
+              <option value="Sin garantía">Sin garantía</option>
+              <option value="6 meses">6 meses</option>
+              <option value="12 meses">12 meses</option>
+              <option value="24 meses">24 meses</option>
+            </select>
+          </label>
+
+          <label className="field" style={{ gridColumn: "1 / -1" }}>
+            <span className="label">Descripción</span>
+            <textarea
+              value={draft.descripcion ?? ""}
+              onChange={(e) => setDraft((d) => ({ ...d, descripcion: e.target.value }))}
+              className="textarea"
+            />
+          </label>
         </div>
 
-        <div className="saveContainer">
-          <Button disabled={loading} onClick={() => void onSave()} className="btn--save">
+        <div className="sectionTitle">Precio</div>
+        <div className="divider" />
+
+        <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(2, 1fr)' }}>
+          <label className="field">
+            <span className="label">Precio USD</span>
+            <input
+              value={draft.precio_usd}
+              onChange={(e) => handleUsdChange(e.target.value)}
+              className="input"
+            />
+          </label>
+
+          <label className="field">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <span className="label" style={{ marginBottom: 0 }}>Precio ARS</span>
+              <span style={{ 
+                background: 'var(--fluo-accent)', 
+                color: 'var(--dark-accent)', 
+                padding: '6px 12px', 
+                borderRadius: '8px', 
+                fontSize: '13px', 
+                fontWeight: 700 
+              }}>Tasa: {exchangeRate}</span>
+            </div>
+            <input
+              value={draft.precio_ars}
+              onChange={(e) => handleArsChange(e.target.value)}
+              className="input"
+            />
+          </label>
+        </div>
+
+        <div className="newActions">
+          <Button disabled={loading} onClick={() => void onSave()} className="btn--primary minw-170">
             {isEditMode ? "Guardar cambios" : "Guardar"}
           </Button>
         </div>

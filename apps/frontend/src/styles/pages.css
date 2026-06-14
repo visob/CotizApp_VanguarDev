@@ -25,7 +25,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 5px;
+  margin-top: 20px;
+  margin-bottom: 20px;
   overflow-x: auto;
   padding-bottom: 4px;
 }
@@ -93,7 +94,7 @@
 
 .stack {
   display: grid;
-  gap: 10px;
+  gap: 15px;
 }
 
 .formGrid {
@@ -133,6 +134,29 @@
 
 .sectionTitle {
   font-weight: 600;
+  font-size: 18px;
+  margin-top: 28px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sectionTitle::before {
+  content: "";
+  display: block;
+  width: 4px;
+  height: 20px;
+  background-color: var(--primary);
+  border-radius: 4px;
+}
+
+.sectionSubtitle {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  margin-top: -4px;
+  margin-left: 14px;
 }
 
 .cellMuted {

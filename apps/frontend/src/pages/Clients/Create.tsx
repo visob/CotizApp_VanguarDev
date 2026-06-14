@@ -131,19 +131,17 @@ export function ClientCreate() {
         </div>
       </div>
 
-      <div className="stack maxw-820" style={{ maxWidth: 840 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 600, margin: "10px 0 20px" }}>
-          {isEditMode ? "Editar cliente" : "Nuevo cliente"}
-        </h2>
+      <div className="stack">
+        <div className="sectionTitle" style={{ marginTop: 8 }}>Datos generales</div>
+        <div className="divider" />
         
-        <div className="formGrid formGrid--2" style={{ gap: 24 }}>
+        <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(3, 1fr)' }}>
           <label className="field">
             <span className="label">Nombre / Razón Social</span>
             <input
               value={draft.nombre_empresa}
               onChange={(e) => setDraft((d) => ({ ...d, nombre_empresa: e.target.value }))}
               className="input"
-              style={{ background: "rgba(0,0,0,0.05)", border: "none" }}
             />
           </label>
           <label className="field">
@@ -152,9 +150,25 @@ export function ClientCreate() {
               value={draft.cuit_tax_id ?? ""}
               onChange={(e) => setDraft((d) => ({ ...d, cuit_tax_id: e.target.value }))}
               className="input"
-              style={{ background: "rgba(0,0,0,0.05)", border: "none" }}
             />
           </label>
+          <label className="field">
+            <span className="label">Tipo</span>
+            <select
+              value={draft.clasificacion ?? ""}
+              onChange={(e) => setDraft((d) => ({ ...d, clasificacion: e.target.value }))}
+              className="select"
+            >
+              <option value="Distribuidor">Distribuidor</option>
+              <option value="Cliente final">Cliente final</option>
+            </select>
+          </label>
+        </div>
+
+        <div className="sectionTitle">Contacto</div>
+        <div className="divider" />
+
+        <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(2, 1fr)' }}>
           <label className="field">
             <span className="label">Email</span>
             <input
@@ -162,7 +176,6 @@ export function ClientCreate() {
               onChange={(e) => setDraft((d) => ({ ...d, email: e.target.value }))}
               className="input"
               type="email"
-              style={{ background: "rgba(0,0,0,0.05)", border: "none" }}
             />
           </label>
           <label className="field">
@@ -171,34 +184,20 @@ export function ClientCreate() {
               value={draft.telefono ?? ""}
               onChange={(e) => setDraft((d) => ({ ...d, telefono: e.target.value }))}
               className="input"
-              style={{ background: "rgba(0,0,0,0.05)", border: "none" }}
             />
           </label>
-          <label className="field">
-            <span className="label">Dirección</span>
-            <input
-              value={draft.direccion ?? ""}
-              onChange={(e) => setDraft((d) => ({ ...d, direccion: e.target.value }))}
-              className="input"
-              style={{ background: "rgba(0,0,0,0.05)", border: "none" }}
-            />
-          </label>
-          <label className="field">
-            <span className="label">Código Postal</span>
-            <input
-              value={draft.codigo_postal ?? ""}
-              onChange={(e) => setDraft((d) => ({ ...d, codigo_postal: e.target.value }))}
-              className="input"
-              style={{ background: "rgba(0,0,0,0.05)", border: "none" }}
-            />
-          </label>
+        </div>
+
+        <div className="sectionTitle">Ubicación</div>
+        <div className="divider" />
+
+        <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(2, 1fr)' }}>
           <label className="field">
             <span className="label">País</span>
             <select
               value={draft.pais ?? ""}
               onChange={(e) => setDraft((d) => ({ ...d, pais: e.target.value }))}
               className="select"
-              style={{ background: "rgba(0,0,0,0.05)", border: "none" }}
             >
               <option value="Argentina">Argentina</option>
               <option value="Uruguay">Uruguay</option>
@@ -211,7 +210,6 @@ export function ClientCreate() {
               value={draft.provincia ?? ""}
               onChange={(e) => setDraft((d) => ({ ...d, provincia: e.target.value }))}
               className="select"
-              style={{ background: "rgba(0,0,0,0.05)", border: "none" }}
             >
               <option value="Buenos Aires">Buenos Aires</option>
               <option value="CABA">CABA</option>
@@ -220,23 +218,27 @@ export function ClientCreate() {
             </select>
           </label>
           <label className="field">
-            <span className="label">Tipo</span>
-            <select
-              value={draft.clasificacion ?? ""}
-              onChange={(e) => setDraft((d) => ({ ...d, clasificacion: e.target.value }))}
-              className="select"
-              style={{ background: "rgba(0,0,0,0.05)", border: "none" }}
-            >
-              <option value="Distribuidor">Distribuidor</option>
-              <option value="Cliente final">Cliente final</option>
-            </select>
+            <span className="label">Código Postal</span>
+            <input
+              value={draft.codigo_postal ?? ""}
+              onChange={(e) => setDraft((d) => ({ ...d, codigo_postal: e.target.value }))}
+              className="input"
+            />
           </label>
-          
-          <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "flex-end" }}>
-            <Button disabled={loading} onClick={() => void onSave()} style={{ background: "var(--primary)", color: "var(--primary-text)", width: "100%", maxWidth: 200, border: "none" }}>
-              {isEditMode ? "Guardar cambios" : "Guardar"}
-            </Button>
-          </div>
+          <label className="field">
+            <span className="label">Dirección</span>
+            <input
+              value={draft.direccion ?? ""}
+              onChange={(e) => setDraft((d) => ({ ...d, direccion: e.target.value }))}
+              className="input"
+            />
+          </label>
+        </div>
+
+        <div className="newActions">
+          <Button disabled={loading} onClick={() => void onSave()} className="btn--primary minw-170">
+            {isEditMode ? "Guardar cambios" : "Guardar"}
+          </Button>
         </div>
 
         {error ? <div className="error" style={{ marginTop: 16 }}>{error}</div> : null}

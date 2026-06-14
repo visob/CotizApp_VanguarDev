@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Button } from "../../components/common/Button";
 import { useToast } from "../../context/ToastContext";
+import { ReturnIcon } from "../../components/common/Icons";
 import type { CatalogOption, Client, CurrencyCode, Product } from "../../types";
 import * as clientService from "../../services/client.service";
 import * as configService from "../../services/config.service";
@@ -383,23 +384,27 @@ export default function QuotesCreate() {
   return (
     <div className="page">
         <div className="stack">
-          <div className="pageHeader">
+          <div className="pageHeader" style={{ borderBottom: "1px solid var(--border)", paddingBottom: 24, marginBottom: 8 }}>
             <div>
-              <h1 className="pageTitle">Nueva cotización</h1>
-              <div className="pageSubtitle">Cotizaciones &gt; Nueva cotización</div>
+              <h1 className="pageTitle">Cotizaciones</h1>
+              <div className="pageSubtitle" style={{ marginTop: 8 }}>
+                <Link to="/quotes" style={{ textDecoration: "none", color: "inherit", opacity: 0.8 }}>Cotizaciones</Link> 
+                <span style={{ margin: "0 6px", opacity: 0.5 }}>›</span> 
+                <span style={{ fontWeight: 600 }}>Nueva cotización</span>
+              </div>
             </div>
-            <Button onClick={backToList} disabled={saving} className="btn--ghost">
-              Volver
+            <Button onClick={backToList} disabled={saving} className="btn--ghost" style={{ border: "none", fontWeight: 600, display: "flex", gap: 8 }}>
+              <ReturnIcon /> Volver
             </Button>
           </div>
 
           {error ? <div className="error">{error}</div> : null}
           {info ? <div className="success">{info}</div> : null}
 
-          <div className="sectionTitle">Datos generales</div>
+          <div className="sectionTitle" style={{ marginTop: 8 }}>Datos generales</div>
           <div className="divider" />
 
-          <div className="quoteNewGrid">
+          <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(3, 1fr)' }}>
             <label className="field">
               <span className="label">Cliente</span>
               <select value={idCliente} onChange={(e) => setIdCliente(e.target.value)} className="select">
@@ -431,11 +436,6 @@ export default function QuotesCreate() {
             </label>
 
             <label className="field">
-              <span className="label">Fecha de vencimiento</span>
-              <input type="date" value={fechaVencimiento} onChange={(e) => setFechaVencimiento(e.target.value)} className="input" />
-            </label>
-
-            <label className="field">
               <span className="label">Moneda</span>
               <select value={moneda} onChange={(e) => setMoneda(e.target.value as CurrencyCode)} className="select">
                 <option value="ARS">ARS</option>
@@ -453,33 +453,14 @@ export default function QuotesCreate() {
                 placeholder="Ej: 10.5"
               />
             </label>
+
+            <label className="field">
+              <span className="label">Fecha de vencimiento</span>
+              <input type="date" value={fechaVencimiento} onChange={(e) => setFechaVencimiento(e.target.value)} className="input" />
+            </label>
           </div>
 
-          <div className="sectionTitle" style={{ marginTop: 32 }}>Reactivación</div>
-          <div className="divider" />
 
-          <div className="quoteNewGrid">
-            <label className="field">
-              <span className="label">Fecha de reactivación 1</span>
-              <input type="date" value={fechaReactivacion1} onChange={(e) => setFechaReactivacion1(e.target.value)} className="input" />
-            </label>
-            <label className="field">
-              <span className="label">Fecha de reactivación 2</span>
-              <input type="date" value={fechaReactivacion2} onChange={(e) => setFechaReactivacion2(e.target.value)} className="input" />
-            </label>
-            <label className="field">
-              <span className="label">Fecha de reactivación 3</span>
-              <input type="date" value={fechaReactivacion3} onChange={(e) => setFechaReactivacion3(e.target.value)} className="input" />
-            </label>
-            <label className="field">
-              <span className="label">Reactivación activa</span>
-              <select value={reactivacionActiva} onChange={(e) => setReactivacionActiva(Number(e.target.value) as 1 | 2 | 3)} className="select">
-                <option value={1}>Fecha 1</option>
-                <option value={2}>Fecha 2</option>
-                <option value={3}>Fecha 3</option>
-              </select>
-            </label>
-          </div>
 
           <div className="sectionTitle">Productos</div>
           <div className="divider" />
@@ -620,6 +601,33 @@ export default function QuotesCreate() {
                     {option.label}
                   </option>
                 ))}
+              </select>
+            </label>
+          </div>
+
+          <div className="sectionTitle">Seguimiento de cotización</div>
+          <div className="sectionSubtitle">Seleccioná tres fechas en las que recibirás una alerta para hacerle seguimiento a la cotización.</div>
+          <div className="divider" />
+
+          <div className="quoteNewGrid">
+            <label className="field">
+              <span className="label">Fecha de reactivación 1</span>
+              <input type="date" value={fechaReactivacion1} onChange={(e) => setFechaReactivacion1(e.target.value)} className="input" />
+            </label>
+            <label className="field">
+              <span className="label">Fecha de reactivación 2</span>
+              <input type="date" value={fechaReactivacion2} onChange={(e) => setFechaReactivacion2(e.target.value)} className="input" />
+            </label>
+            <label className="field">
+              <span className="label">Fecha de reactivación 3</span>
+              <input type="date" value={fechaReactivacion3} onChange={(e) => setFechaReactivacion3(e.target.value)} className="input" />
+            </label>
+            <label className="field">
+              <span className="label">Reactivación activa</span>
+              <select value={reactivacionActiva} onChange={(e) => setReactivacionActiva(Number(e.target.value) as 1 | 2 | 3)} className="select">
+                <option value={1}>Fecha 1</option>
+                <option value={2}>Fecha 2</option>
+                <option value={3}>Fecha 3</option>
               </select>
             </label>
           </div>

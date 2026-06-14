@@ -74,14 +74,14 @@
 .productsHeaderGrid,
 .productsRowGrid {
   display: grid;
-  grid-template-columns: 2fr 120px 160px;
-  gap: 10px;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 16px;
 }
 
 .summaryGrid {
   display: grid;
   gap: 12px;
-  grid-template-columns: 1fr minmax(280px, 420px);
+  grid-template-columns: 1fr minmax(360px, 550px);
   align-items: start;
 }
 
