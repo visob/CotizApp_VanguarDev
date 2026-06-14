@@ -3,6 +3,7 @@ import { MainLayout } from "./components/layout/MainLayout";
 import { useAuth } from "./context/AuthContext";
 import ClientsPage from "./pages/Clients";
 import DashboardPage from "./pages/Dashboard";
+import LandingPage from "./pages/Landing";
 import LoginPage from "./pages/Login";
 import ProductsPage from "./pages/Products";
 import QuotesPage from "./pages/Quotes";
@@ -14,8 +15,9 @@ export default function App() {
   if (!token) {
     return (
       <Routes>
+        <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     );
   }
