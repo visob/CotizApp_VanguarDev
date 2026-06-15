@@ -370,8 +370,8 @@ export default function QuotesList() {
               {quotes.map((r) => {
                 const st = statusStyle(r.estado);
                 return (
-                  <tr key={r.id}>
-                    <td className="colCheckbox">
+                  <tr key={r.id} onClick={() => navigate(`/quotes/${r.id}`)} style={{ cursor: "pointer" }} className="tableRowHover">
+                    <td className="colCheckbox" onClick={(e) => e.stopPropagation()}>
                       <input type="checkbox" />
                     </td>
                     <td>{r.cliente_nombre_empresa}</td>
@@ -386,7 +386,7 @@ export default function QuotesList() {
                       <span className={st.className}>{st.label}</span>
                     </td>
                     <td className="cellMuted">{formatAlert(r.proxima_alerta)}</td>
-                    <td className="tableActionsCell">
+                    <td className="tableActionsCell" onClick={(e) => e.stopPropagation()}>
                       <ActionMenu
                         items={[
                           {

@@ -79,77 +79,111 @@ export async function generateQuotePdfBuffer(quoteId: number) {
     doc.on("error", reject);
   });
 
-  doc.fontSize(18).text("Cotización", { align: "left" });
-  doc.moveDown(0.5);
+  // Font sizes and colors
+  const primaryColor = "#000000";
+  const secondaryColor = "#444444";
+  const bgColor = "#f9f9f9"; // the light beige background from the image
+  
+  // Actually, we can't easily change the whole page background without drawing a huge rect, 
+  // but let's just stick to white page, it's safer for printing. The image has an off-white background,
+  // we'll use white for the PDF paper.
+  
+  const startX = 48;
+  const contentWidth = 500;
 
-  doc.fontSize(10);
-  doc.text(`N°: ${header.id}`);
-  doc.text(`Fecha: ${new Date(header.fecha_emision).toLocaleString("es-AR")}`);
-  doc.text(`Moneda: ${header.moneda}`);
-  doc.text(`Tipo de cambio: ${header.tipo_cambio}`);
-  doc.text(`Estado: ${header.estado}`);
-  doc.moveDown(0.7);
+  // 1. Header: "COTIZACIÓN"
+  doc.font("Helvetica-Bold").fontSize(36).fillColor(primaryColor).text("COTIZACIÓN", startX, 60);
 
-  doc.fontSize(12).text("Cliente", { underline: true });
-  doc.fontSize(10);
-  doc.text(header.cliente_nombre_empresa);
-  if (header.cliente_contacto_principal) doc.text(`Contacto: ${header.cliente_contacto_principal}`);
-  if (header.cliente_cuit_tax_id) doc.text(`CUIT: ${header.cliente_cuit_tax_id}`);
-  doc.moveDown(0.7);
+  // Pill: N°
+  const pillY = 100;
+  doc.roundedRect(startX, pillY, 120, 24, 12).strokeColor(primaryColor).lineWidth(1.5).stroke();
+  doc.font("Helvetica-Bold").fontSize(12).fillColor(primaryColor).text(`Nº: ${header.id}`, startX + 16, pillY + 6);
 
-  doc.fontSize(12).text("Vendedor", { underline: true });
-  doc.fontSize(10).text(`${header.usuario_nombre} (${header.usuario_email})`);
-  doc.moveDown(0.8);
+  // 2. Client Info Box
+  const boxY = 150;
+  doc.roundedRect(startX, boxY, contentWidth, 90, 12).strokeColor(primaryColor).lineWidth(1).stroke();
+  
+  // Left Side: Client Data
+  doc.font("Helvetica-Bold").fontSize(10).fillColor(primaryColor).text("DATOS DEL CLIENTE", startX + 20, boxY + 16);
+  doc.font("Helvetica").fillColor(secondaryColor);
+  let textY = boxY + 36;
+  doc.text(header.cliente_nombre_empresa, startX + 20, textY); textY += 14;
+  if (header.cliente_contacto_principal) { doc.text(header.cliente_contacto_principal, startX + 20, textY); textY += 14; }
+  if (header.cliente_cuit_tax_id) { doc.text(`CUIT: ${header.cliente_cuit_tax_id}`, startX + 20, textY); textY += 14; }
 
-  const startX = doc.x;
-  const tableTop = doc.y;
-
-  const colDesc = startX;
-  const colQty = startX + 270;
+  // 3. Table Header (Black Pill)
+  let tableY = 270;
+  doc.roundedRect(startX, tableY, contentWidth, 30, 15).fillColor(primaryColor).fill();
+  
+  const colDesc = startX + 20;
+  const colQty = startX + 250;
   const colUnit = startX + 330;
-  const colTotal = startX + 430;
+  const colTotal = startX + 410;
 
-  doc.fontSize(10).text("Descripción", colDesc, tableTop);
-  doc.text("Cant.", colQty, tableTop);
-  doc.text("Unit.", colUnit, tableTop);
-  doc.text("Total", colTotal, tableTop);
-  doc.moveTo(startX, tableTop + 14).lineTo(startX + 500, tableTop + 14).strokeColor("#cccccc").stroke();
+  doc.font("Helvetica-Bold").fontSize(10).fillColor("#ffffff");
+  doc.text("Detalle", colDesc, tableY + 9);
+  doc.text("Cantidad", colQty, tableY + 9);
+  doc.text("Precio", colUnit, tableY + 9);
+  doc.text("Total", colTotal, tableY + 9);
 
-  let y = tableTop + 22;
-  doc.fillColor("#111111");
+  // 4. Table Rows
+  let y = tableY + 45;
+  doc.font("Helvetica").fillColor(secondaryColor);
 
   for (const r of rows) {
     const unitCents = parseMoneyToCents(r.item_precio_unitario_momento) ?? 0n;
     const grossLineCents = unitCents * BigInt(r.item_cantidad);
     const lineTotal = centsToMoneyString(grossLineCents);
     const desc = r.producto_nombre;
-    doc.fontSize(10).text(desc, colDesc, y, { width: 250 });
-    doc.text(String(r.item_cantidad), colQty, y);
-    doc.text(centsToMoneyString(unitCents), colUnit, y);
-    doc.text(lineTotal, colTotal, y);
-    y += 18;
+    
+    doc.text(desc, colDesc, y, { width: 200 });
+    // Since item_cantidad might be a number, make sure it aligns well
+    doc.text(String(r.item_cantidad).padStart(2, "0"), colQty, y);
+    doc.text(`${centsToMoneyString(unitCents)} ${header.moneda}`, colUnit, y);
+    doc.text(`${lineTotal} ${header.moneda}`, colTotal, y);
+    
+    y += 24; // Row spacing
     if (y > 720) {
       doc.addPage();
       y = doc.y;
     }
   }
 
-  doc.moveDown(2);
-  doc.moveTo(startX, doc.y).lineTo(startX + 500, doc.y).strokeColor("#cccccc").stroke();
-  doc.moveDown(0.7);
+  // 5. Horizontal Line below rows
+  doc.moveTo(startX, y).lineTo(startX + contentWidth, y).strokeColor(primaryColor).lineWidth(1).stroke();
+  
+  // 6. Totals Section
+  y += 20;
+  
+  // Subtotal (if needed, but the image just has IVA and TOTAL. Let's add subtotal, iva, descuento for clarity).
+  doc.font("Helvetica").fontSize(11).fillColor(primaryColor);
+  
+  if (descuentoCents > 0) {
+    doc.text("Descuento", colUnit, y);
+    doc.text(`- ${centsToMoneyString(descuentoCents)}`, colTotal, y);
+    y += 20;
+  }
+  
+  doc.text("Subtotal", colUnit, y);
+  doc.text(centsToMoneyString(subtotalCents), colTotal, y);
+  y += 20;
 
-  const summaryX = startX + 300;
-  doc.fontSize(10);
-  doc.text(`Subtotal: ${centsToMoneyString(subtotalCents)} ${header.moneda}`, summaryX);
-  doc.text(
-    `IVA (${header.iva_porcentaje}%): ${centsToMoneyString(ivaCents)} ${header.moneda}`,
-    summaryX
-  );
-  doc.text(
-    `Descuento (${header.descuento_porcentaje_global}%): ${centsToMoneyString(descuentoCents)} ${header.moneda}`,
-    summaryX
-  );
-  doc.fontSize(12).text(`Total: ${centsToMoneyString(totalFinalCents)} ${header.moneda}`, summaryX);
+  if (ivaCents > 0) {
+    doc.text(`IVA`, colUnit, y);
+    doc.text(`${header.iva_porcentaje}%`, colUnit + 40, y); // Small adjustment to align percentage
+    doc.text(centsToMoneyString(ivaCents), colTotal, y);
+    y += 20;
+  }
+
+  // Final Total (Black Pill)
+  y += 10;
+  const totalBoxWidth = 200;
+  const totalBoxX = startX + contentWidth - totalBoxWidth;
+  doc.roundedRect(totalBoxX, y, totalBoxWidth, 32, 16).fillColor(primaryColor).fill();
+  
+  doc.font("Helvetica-Bold").fontSize(12).fillColor("#ffffff");
+  doc.text("TOTAL", totalBoxX + 20, y + 10);
+  doc.text(`${centsToMoneyString(totalFinalCents)} ${header.moneda}`, totalBoxX + 110, y + 10);
 
   doc.end();
   return endPromise;

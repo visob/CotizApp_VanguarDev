@@ -29,7 +29,7 @@ export const DEFAULT_CATALOG_OPTIONS: ReadonlyArray<{
 }> = [
   { tipo: "forma_pago", label: "Efectivo", value: "efectivo" },
   { tipo: "lugar_entrega", label: "Deposito", value: "deposito" },
-  { tipo: "tipo_iva", label: "21%", value: "21" }
+  { tipo: "tipo_iva", label: "IVA 21%", value: "21" }
 ];
 
 export async function getConfig(clave: string, companyId: number) {

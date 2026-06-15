@@ -173,7 +173,7 @@ export function ClientsList() {
               <tr key={c.id}>
                 <td className="colCheckbox"><input type="checkbox" /></td>
                 <td style={{ fontWeight: 500 }}>
-                  <Link className="tableLink" to={`/clients/${c.id}`}>
+                  <Link className="tableLink" to={`/clients/${c.id}`} state={{ client: c }}>
                     {c.nombre_empresa}
                   </Link>
                 </td>
