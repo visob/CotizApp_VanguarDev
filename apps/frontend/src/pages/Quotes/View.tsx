@@ -213,7 +213,26 @@ export default function QuotesView() {
   }
 
   if (loading && !data) {
-    return <div className="page"><div className="hint">Cargando...</div></div>;
+    return (
+      <div className="page" style={{ animation: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite" }}>
+        <div className="pageHeader" style={{ borderBottom: "1px solid var(--border)", paddingBottom: 24, marginBottom: 24 }}>
+          <div>
+            <div style={{ width: 250, height: 38, background: "var(--border)", borderRadius: 6 }} />
+            <div style={{ width: 180, height: 20, background: "var(--border)", borderRadius: 4, marginTop: 10 }} />
+          </div>
+        </div>
+        <div className="quoteDetailGrid">
+          <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+            <div className="quoteHeaderCard" style={{ height: 120, border: "none", background: "var(--border)", opacity: 0.5 }} />
+            <div style={{ height: 300, borderRadius: 12, background: "var(--border)", opacity: 0.3 }} />
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+            <div className="card" style={{ height: 180, border: "none", background: "var(--border)", opacity: 0.4 }} />
+            <div className="card" style={{ height: 220, border: "none", background: "var(--border)", opacity: 0.3 }} />
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (!data) {
@@ -233,7 +252,7 @@ export default function QuotesView() {
 
   return (
     <div className="page">
-      <div className="pageHeader" style={{ marginBottom: 32 }}>
+      <div className="pageHeader" style={{ borderBottom: "1px solid var(--border)", paddingBottom: 24, marginBottom: 24 }}>
         <div>
           <h1 className="pageTitle">Cotizaciones</h1>
           <div className="pageSubtitle">
@@ -286,49 +305,51 @@ export default function QuotesView() {
             </div>
           </div>
 
-          <div style={{ marginBottom: 32 }}>
-            <div className="quoteItemHeader">
-              <div>Producto</div>
-              <div>Cantidad</div>
-              <div>Precio Unit.</div>
-              <div>IVA</div>
-              <div>Total</div>
-            </div>
-            {items.map((it) => (
-              <div key={it.id} className="quoteItemRow">
-                <div style={{ fontWeight: 600 }}>{it.producto_nombre}</div>
-                <div>{it.cantidad}</div>
-                <div>${it.precio_unitario_momento} {q.moneda}</div>
-                <div>{it.iva_porcentaje}%</div>
-                <div style={{ fontWeight: 600 }}>${(Number(it.precio_unitario_momento) * it.cantidad).toFixed(2)}</div>
+          <div className="card" style={{ padding: 24, marginBottom: 32, display: "flex", flexDirection: "column" }}>
+            <div style={{ marginBottom: 32 }}>
+              <div className="quoteItemHeader">
+                <div>Producto</div>
+                <div>Cantidad</div>
+                <div>Precio Unit.</div>
+                <div>IVA</div>
+                <div>Total</div>
               </div>
-            ))}
-          </div>
+              {items.map((it) => (
+                <div key={it.id} className="quoteItemRow">
+                  <div style={{ fontWeight: 600 }}>{it.producto_nombre}</div>
+                  <div>{it.cantidad}</div>
+                  <div>${it.precio_unitario_momento} {q.moneda}</div>
+                  <div>{it.iva_porcentaje}%</div>
+                  <div style={{ fontWeight: 600 }}>${(Number(it.precio_unitario_momento) * it.cantidad).toFixed(2)}</div>
+                </div>
+              ))}
+            </div>
 
-          <div style={{ alignSelf: "flex-end", width: 320, display: "flex", flexDirection: "column", gap: 12, paddingRight: 24 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
-              <span className="hint">Subtotal:</span>
-              <span style={{ fontWeight: 600 }}>${q.subtotal} {q.moneda}</span>
-            </div>
-            {Number(q.descuento_global) > 0 && (
+            <div style={{ alignSelf: "flex-end", width: 320, display: "flex", flexDirection: "column", gap: 12 }}>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
-                <span className="hint">Descuento ({q.descuento_porcentaje_global}%):</span>
-                <span style={{ fontWeight: 600, color: "var(--danger)" }}>-${q.descuento_global}</span>
+                <span className="hint">Subtotal:</span>
+                <span style={{ fontWeight: 600 }}>${q.subtotal} {q.moneda}</span>
               </div>
-            )}
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
-              <span className="hint">IVA ({q.iva_porcentaje}%):</span>
-              <span style={{ fontWeight: 600 }}>Incluido</span>
-            </div>
-            <div style={{ height: 1, background: "rgba(0,0,0,0.1)", margin: "8px 0" }} />
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 18, fontWeight: 700 }}>
-              <span>Total Final:</span>
-              <span>${q.total_final} {q.moneda}</span>
+              {Number(q.descuento_global) > 0 && (
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
+                  <span className="hint">Descuento ({q.descuento_porcentaje_global}%):</span>
+                  <span style={{ fontWeight: 600, color: "var(--danger)" }}>-${q.descuento_global}</span>
+                </div>
+              )}
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
+                <span className="hint">IVA ({q.iva_porcentaje}%):</span>
+                <span style={{ fontWeight: 600 }}>Incluido</span>
+              </div>
+              <div style={{ height: 1, background: "rgba(0,0,0,0.1)", margin: "8px 0" }} />
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 18, fontWeight: 700 }}>
+                <span>Total Final:</span>
+                <span>${q.total_final} {q.moneda}</span>
+              </div>
             </div>
           </div>
 
           {/* Tabs Section for Notes and History */}
-          <div style={{ marginTop: 64 }}>
+          <div style={{ marginTop: 5 }}>
             <div className="quotesTabs" style={{ marginBottom: 24 }}>
               <Button
                 className={activeTab === "notas" ? "btn--primary" : "btn--ghost"}
@@ -490,7 +511,7 @@ export default function QuotesView() {
                 </div>
                 <div>
                   <div style={{ fontWeight: 600 }}>{c.nombre_empresa}</div>
-                  <div style={{ fontSize: 13, opacity: 0.8 }}>{c.contacto_principal || "Sin contacto"}</div>
+                  {c.contacto_principal && <div style={{ fontSize: 13, opacity: 0.8 }}>{c.contacto_principal}</div>}
                 </div>
               </div>
               <div style={{ fontSize: 13, opacity: 0.8, display: "flex", flexDirection: "column", gap: 8 }}>

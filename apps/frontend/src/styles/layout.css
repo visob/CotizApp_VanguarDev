@@ -6,7 +6,7 @@
 .layoutRow {
   display: flex;
   gap: 18px;
-  align-items: stretch;
+  align-items: flex-start;
 }
 
 .layoutMain {
@@ -24,6 +24,9 @@
 }
 
 .sidenav {
+  position: sticky;
+  top: 24px;
+  height: calc(100vh - 48px);
   transition: width 180ms ease;
   background: var(--dark-accent);
   color: #ffffff;

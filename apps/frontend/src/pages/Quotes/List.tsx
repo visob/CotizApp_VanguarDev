@@ -381,7 +381,7 @@ export default function QuotesList() {
                     <td className="cellMuted">
                       ${r.total_final} {r.moneda}
                     </td>
-                    <td className="hint">{r.cliente_clasificacion ?? "-"}</td>
+                    <td className="cellMuted">{r.cliente_clasificacion ?? "-"}</td>
                     <td>
                       <span className={st.className}>{st.label}</span>
                     </td>
