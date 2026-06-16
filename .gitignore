@@ -1,5 +1,6 @@
 node_modules
 dist
+*.tsbuildinfo
 build
 .env
 .env.local
@@ -13,4 +14,3 @@ pnpm-debug.log*
 .turbo
 .cache
 coverage
-
