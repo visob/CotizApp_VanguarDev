@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Search } from "lucide-react";
 import { Button } from "../../components/common/Button";
 import { useAuth } from "../../context/AuthContext";
 import type { Company, ManagedUser, UserRole } from "../../types";
@@ -60,7 +61,7 @@ function getUserLockStatus(user: ManagedUser) {
   };
 }
 
-type TabKey = "general" | "users" | "companies";
+type TabKey = "general" | "accessibility" | "users" | "companies";
 
 export default function SettingsPage() {
   const { user } = useAuth();
@@ -70,13 +71,30 @@ export default function SettingsPage() {
 
   const tabs = useMemo(() => {
     const items: Array<{ key: TabKey; label: string }> = [];
-    if (!isSuperAdmin) items.push({ key: "general", label: "General" });
+    if (!isSuperAdmin) items.push({ key: "general", label: "Ajustes de Cotización" });
+    items.push({ key: "accessibility", label: "Accesibilidad" });
     if (canManageUsers) items.push({ key: "users", label: "Usuarios" });
     if (isSuperAdmin) items.push({ key: "companies", label: "Empresas" });
     return items;
   }, [canManageUsers, isSuperAdmin]);
 
-  const [activeTab, setActiveTab] = useState<TabKey>(() => (isSuperAdmin ? "users" : "general"));
+  const [activeTab, setActiveTab] = useState<TabKey>(() => (isSuperAdmin ? "accessibility" : "general"));
+
+  const [fontSize, setFontSize] = useState(() => localStorage.getItem("app-font-size") || "medium");
+  const [reduceAnimations, setReduceAnimations] = useState(() => localStorage.getItem("app-reduce-animations") === "true");
+
+  useEffect(() => {
+    localStorage.setItem("app-font-size", fontSize);
+    if (fontSize === "small") document.documentElement.style.fontSize = "14px";
+    else if (fontSize === "large") document.documentElement.style.fontSize = "18px";
+    else document.documentElement.style.fontSize = "16px";
+  }, [fontSize]);
+
+  useEffect(() => {
+    localStorage.setItem("app-reduce-animations", String(reduceAnimations));
+    if (reduceAnimations) document.documentElement.classList.add("reduce-animations");
+    else document.documentElement.classList.remove("reduce-animations");
+  }, [reduceAnimations]);
 
   const [exchangeRate, setExchangeRate] = useState("1000");
   const [loading, setLoading] = useState(true);
@@ -84,6 +102,7 @@ export default function SettingsPage() {
   const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
 
   const [companies, setCompanies] = useState<Company[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [companiesLoading, setCompaniesLoading] = useState(false);
   const [companiesIncludeInactive, setCompaniesIncludeInactive] = useState(false);
   const [companiesError, setCompaniesError] = useState<string | null>(null);
@@ -183,7 +202,25 @@ export default function SettingsPage() {
     }
   }, [canManageUsers, usersIncludeInactive, userCompanyFilter]);
 
-  async function handleSave() {
+  const filteredUsers = useMemo(() => {
+    if (!searchQuery) return users;
+    const lowerQ = searchQuery.toLowerCase();
+    return users.filter(u => 
+      (u.nombre || "").toLowerCase().includes(lowerQ) ||
+      (u.email || "").toLowerCase().includes(lowerQ) ||
+      (u.empresa_nombre || "").toLowerCase().includes(lowerQ)
+    );
+  }, [users, searchQuery]);
+
+  const filteredCompanies = useMemo(() => {
+    if (!searchQuery) return companies;
+    const lowerQ = searchQuery.toLowerCase();
+    return companies.filter(c => 
+      (c.nombre || "").toLowerCase().includes(lowerQ)
+    );
+  }, [companies, searchQuery]);
+
+  async function handleSaveSettings(e: React.FormEvent) {
     setMessage(null);
     const val = parseFloat(exchangeRate.replace(",", "."));
     if (isNaN(val) || val <= 0) {
@@ -401,10 +438,10 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="page">
+    <div className="page" style={{ height: "calc(100vh - 100px)", overflow: "hidden", display: "flex", flexDirection: "column" }}>
       <div
         className="pageHeader"
-        style={{ borderBottom: "1px solid var(--border)", paddingBottom: 24, marginBottom: 12 }}
+        style={{ borderBottom: "1px solid var(--border)", paddingBottom: 16, flexShrink: 0 }}
       >
         <div>
           <h1 className="pageTitle">Configuración</h1>
@@ -412,52 +449,94 @@ export default function SettingsPage() {
             Ajustes globales del sistema
           </div>
         </div>
+        <div className="pageHeaderSearch">
+          <Search size={18} className="pageHeaderSearchIcon" />
+          <input
+            type="text"
+            placeholder="Buscar en configuración..."
+            className="pageHeaderSearchInput"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
       </div>
 
-      <div className="pageTabs">
-        {tabs.map((tab) => (
-          <button
-            key={tab.key}
-            className={["pageTabPill", tab.key === activeTab ? "pageTabPill--active" : ""].join(
-              " "
-            )}
-            onClick={() => setActiveTab(tab.key)}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <div style={{ display: "flex", flex: 1, minHeight: 0, gap: "32px" }}>
+        {/* Sidebar */}
+        <div style={{ width: "240px", flexShrink: 0, display: "flex", flexDirection: "column", gap: "8px", overflowY: "auto", paddingBottom: "32px" }}>
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              style={{
+                textAlign: "left",
+                padding: "12px 16px",
+                borderRadius: "12px",
+                border: "none",
+                background: activeTab === tab.key ? "rgba(125, 57, 235, 0.08)" : "transparent",
+                color: activeTab === tab.key ? "var(--primary)" : "var(--text-muted)",
+                fontWeight: activeTab === tab.key ? 600 : 500,
+                cursor: "pointer",
+                transition: "all 0.2s",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between"
+              }}
+            >
+              {tab.label}
+              {activeTab === tab.key && <span>›</span>}
+            </button>
+          ))}
+        </div>
+
+        {/* Content Pane */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "0 32px" }}>
 
       {activeTab === "general" ? (
         <div className="stack">
-          <div className="settingsCard">
-            <h2 className="settingsSectionTitle">Moneda y Cotización</h2>
+          <div>
+            <h2 style={{ fontSize: "1.5rem", margin: "0 0 8px 0" }}>Ajustes de Cotización</h2>
+            <p className="hint" style={{ margin: "0 0 24px 0" }}>Configurá la tasa de cambio y las opciones predeterminadas para los catálogos y atributos de las cotizaciones.</p>
+            
+            {/* Navigation Pills */}
+            <div style={{ display: "flex", gap: "8px", overflowX: "auto", paddingBottom: "12px", msOverflowStyle: "none", scrollbarWidth: "none" }} className="hide-scrollbar">
+              <button onClick={() => document.getElementById("section-moneda")?.scrollIntoView({ behavior: "smooth" })} style={{ padding: "8px 16px", borderRadius: "20px", border: "1px solid var(--border)", background: "var(--surface)", cursor: "pointer", whiteSpace: "nowrap", fontWeight: 500 }}>Moneda y Cotización</button>
+              <button onClick={() => document.getElementById("section-forma_pago")?.scrollIntoView({ behavior: "smooth" })} style={{ padding: "8px 16px", borderRadius: "20px", border: "1px solid var(--border)", background: "var(--surface)", cursor: "pointer", whiteSpace: "nowrap", fontWeight: 500 }}>Forma de Pago</button>
+              <button onClick={() => document.getElementById("section-lugar_entrega")?.scrollIntoView({ behavior: "smooth" })} style={{ padding: "8px 16px", borderRadius: "20px", border: "1px solid var(--border)", background: "var(--surface)", cursor: "pointer", whiteSpace: "nowrap", fontWeight: 500 }}>Lugar de Entrega</button>
+              <button onClick={() => document.getElementById("section-tipo_iva")?.scrollIntoView({ behavior: "smooth" })} style={{ padding: "8px 16px", borderRadius: "20px", border: "1px solid var(--border)", background: "var(--surface)", cursor: "pointer", whiteSpace: "nowrap", fontWeight: 500 }}>Tipo de IVA</button>
+            </div>
+          </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <label className="field" style={{ maxWidth: 300 }}>
-                <span className="label">Tasa de Cambio (1 USD = ? ARS)</span>
-                <input
-                  value={exchangeRate}
-                  onChange={(e) => setExchangeRate(e.target.value)}
-                  className="input"
-                  style={{ background: "rgba(17,24,39,0.06)", border: "none" }}
-                />
-              </label>
+          <div id="section-moneda" className="card" style={{ padding: 24, border: "1px solid var(--border)", boxShadow: "var(--shadow)" }}>
+            <div className="sectionTitle" style={{ fontSize: "1.1rem", borderBottom: "none", paddingBottom: 0 }}>Moneda y Cotización</div>
+            <div className="hint" style={{ marginTop: 4, marginBottom: 20 }}>Define la tasa de cambio global a utilizar por defecto en nuevas cotizaciones.</div>
 
-              <div style={{ marginTop: 8 }}>
+            <div style={{ padding: "20px 0", display: "flex", flexDirection: "column", gap: "16px" }}>
+              <div style={{ fontWeight: 600, fontSize: "0.95rem", color: "var(--text-primary)" }}>Actualizar cotización</div>
+              <div style={{ display: "flex", gap: "16px", alignItems: "flex-end" }}>
+                <label className="field" style={{ flex: 1, maxWidth: "300px", margin: 0 }}>
+                  <span className="label">Tasa de Cambio (1 USD = ? ARS)</span>
+                  <input
+                    value={exchangeRate}
+                    onChange={(e) => setExchangeRate(e.target.value)}
+                    className="input"
+                    style={{ background: "var(--surface)" }}
+                  />
+                </label>
                 <Button
+                  className="btn--primary"
                   disabled={saving}
                   onClick={() => void handleSave()}
-                  style={{ background: "#18181b", color: "#fff", border: "none", minWidth: 120 }}
+                  style={{ height: "42px", minWidth: "120px" }}
                 >
-                  {saving ? "Guardando..." : "Guardar Cambios"}
+                  {saving ? "Guardando..." : "Guardar"}
                 </Button>
               </div>
 
               {message ? (
                 <div
                   className={message.type === "error" ? "error" : "success"}
-                  style={message.type === "success" ? { fontSize: 14, fontWeight: 500 } : {}}
+                  style={message.type === "success" ? { fontSize: 14, fontWeight: 500, marginTop: "-4px" } : { marginTop: "-4px" }}
                 >
                   {message.text}
                 </div>
@@ -470,16 +549,22 @@ export default function SettingsPage() {
       ) : null}
 
       {activeTab === "users" && canManageUsers ? (
-        <div className="settingsWideCard">
-          <div className="row" style={{ justifyContent: "space-between" }}>
-            <div>
-              <h2 className="settingsSectionTitle" style={{ borderBottom: "none", paddingBottom: 0 }}>
-                Usuarios
-              </h2>
-              <div className="hint">
-                Administración de usuarios{user?.empresaNombre ? ` · ${user.empresaNombre}` : ""}
+        <div className="stack">
+          <div>
+            <h2 style={{ fontSize: "1.5rem", margin: "0 0 8px 0" }}>Usuarios del Sistema</h2>
+            <p className="hint" style={{ margin: "0 0 32px 0" }}>Administrá los accesos, roles y contraseñas de los usuarios de tu empresa.</p>
+          </div>
+
+          <div className="card" style={{ padding: 24, border: "1px solid var(--border)", boxShadow: "var(--shadow)" }}>
+            <div className="row" style={{ justifyContent: "space-between" }}>
+              <div>
+                <div className="sectionTitle" style={{ fontSize: "1.1rem", borderBottom: "none", paddingBottom: 0 }}>
+                  Usuarios Activos
+                </div>
+                <div className="hint" style={{ marginTop: 4 }}>
+                  Listado y permisos{user?.empresaNombre ? ` · ${user.empresaNombre}` : ""}
+                </div>
               </div>
-            </div>
 
             <div className="row">
               <label className="row hint" style={{ gap: 8 }}>
@@ -711,7 +796,7 @@ export default function SettingsPage() {
                 </tr>
               </thead>
               <tbody>
-                {users.map((u) => {
+                {filteredUsers.map((u) => {
                   const lockStatus = getUserLockStatus(u);
                   const canUnlock = lockStatus.locked || u.failed_login_attempts > 0 || u.lock_level > 0;
                   return (
@@ -774,17 +859,24 @@ export default function SettingsPage() {
             </table>
           </div>
         </div>
+      </div>
       ) : null}
 
       {activeTab === "companies" && isSuperAdmin ? (
-        <div className="settingsWideCard">
-          <div className="row" style={{ justifyContent: "space-between" }}>
-            <div>
-              <h2 className="settingsSectionTitle" style={{ borderBottom: "none", paddingBottom: 0 }}>
-                Empresas
-              </h2>
-              <div className="hint">Creación, lectura, modificación y desactivación</div>
-            </div>
+        <div className="stack">
+          <div>
+            <h2 style={{ fontSize: "1.5rem", margin: "0 0 8px 0" }}>Empresas Registradas</h2>
+            <p className="hint" style={{ margin: "0 0 32px 0" }}>Gestioná las distintas empresas que utilizan la plataforma y sus configuraciones.</p>
+          </div>
+
+          <div className="card" style={{ padding: 24, border: "1px solid var(--border)", boxShadow: "var(--shadow)" }}>
+            <div className="row" style={{ justifyContent: "space-between" }}>
+              <div>
+                <div className="sectionTitle" style={{ fontSize: "1.1rem", borderBottom: "none", paddingBottom: 0 }}>
+                  Directorio de Empresas
+                </div>
+                <div className="hint" style={{ marginTop: 4 }}>Creación, lectura, modificación y desactivación</div>
+              </div>
 
             <label className="row hint" style={{ gap: 8 }}>
               <input
@@ -831,7 +923,7 @@ export default function SettingsPage() {
                 </tr>
               </thead>
               <tbody>
-                {companies.map((c) => {
+                {filteredCompanies.map((c) => {
                   const isEditing = editingCompanyId === c.id;
                   return (
                     <tr key={c.id}>
@@ -910,7 +1002,69 @@ export default function SettingsPage() {
             </table>
           </div>
         </div>
+      </div>
       ) : null}
+      {activeTab === "accessibility" ? (
+        <div className="stack">
+          <div>
+            <h2 style={{ fontSize: "1.5rem", margin: "0 0 8px 0" }}>Accesibilidad</h2>
+            <p className="hint" style={{ margin: "0 0 32px 0" }}>Personalizá la experiencia visual de la plataforma para que te resulte más cómoda.</p>
+          </div>
+
+          <div className="card" style={{ padding: 24, border: "1px solid var(--border)", boxShadow: "var(--shadow)", display: "flex", flexDirection: "column", gap: 32 }}>
+            <div>
+              <div className="sectionTitle" style={{ fontSize: "1.1rem", borderBottom: "none", paddingBottom: 0 }}>Tamaño de la letra</div>
+              <div className="hint" style={{ marginTop: 4, marginBottom: 20 }}>Ajustá el tamaño base del texto en toda la aplicación.</div>
+              
+              <div style={{ display: "flex", gap: "16px" }}>
+                {[
+                  { value: "small", label: "Pequeño", px: "14px" },
+                  { value: "medium", label: "Mediano", px: "16px" },
+                  { value: "large", label: "Grande", px: "18px" }
+                ].map(opt => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setFontSize(opt.value)}
+                    style={{
+                      flex: 1,
+                      padding: "20px",
+                      borderRadius: "12px",
+                      border: fontSize === opt.value ? "2px solid var(--primary)" : "1px solid var(--border)",
+                      background: fontSize === opt.value ? "rgba(125, 57, 235, 0.04)" : "transparent",
+                      cursor: "pointer",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: "8px",
+                      transition: "all 0.2s"
+                    }}
+                  >
+                    <span style={{ fontSize: opt.px, fontWeight: 500, color: fontSize === opt.value ? "var(--primary)" : "var(--text-primary)" }}>Aa</span>
+                    <span style={{ fontSize: "14px", color: "var(--text-muted)" }}>{opt.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ borderTop: "1px solid var(--border)", paddingTop: 32 }}>
+              <div className="sectionTitle" style={{ fontSize: "1.1rem", borderBottom: "none", paddingBottom: 0 }}>Movimiento y Animaciones</div>
+              <div className="hint" style={{ marginTop: 4, marginBottom: 20 }}>Reduce o elimina las transiciones y animaciones de la interfaz.</div>
+              
+              <label style={{ display: "flex", alignItems: "center", gap: "12px", cursor: "pointer", padding: "16px 0" }}>
+                <input 
+                  type="checkbox" 
+                  checked={reduceAnimations} 
+                  onChange={(e) => setReduceAnimations(e.target.checked)}
+                  style={{ width: "20px", height: "20px", accentColor: "var(--primary)" }}
+                />
+                <span style={{ fontWeight: 500 }}>Reducir animaciones en toda la aplicación</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      ) : null}
+        </div>
+      </div>
     </div>
   );
 }

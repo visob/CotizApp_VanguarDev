@@ -37,6 +37,7 @@ export default function QuotesList() {
     "reactivacion" | "vencimiento" | "estado" | "cliente" | "tipo_cliente" | "monto" | "emision" | "id"
   >("reactivacion");
   const [orderDir, setOrderDir] = useState<"asc" | "desc">("asc");
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   const [statusModalQuote, setStatusModalQuote] = useState<quoteService.QuoteListItem | null>(null);
   const [newStatus, setNewStatus] = useState("");
@@ -277,40 +278,46 @@ export default function QuotesList() {
             })}
           </div>
 
-          <div className="filterToolbar">
-          <input placeholder="Buscar cliente o ID..." value={q} onChange={(e) => setQ(e.target.value)} className="searchBarInput" />
-            <div className="dateRange">
-              <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="input" />
+          <div className="filterToolbar" style={{ marginBottom: showAdvancedFilters ? 16 : 24 }}>
+            <input placeholder="Buscar cliente o ID..." value={q} onChange={(e) => setQ(e.target.value)} className="searchBarInput" />
+            <div className="dateRange" style={{ flex: "0 1 auto" }}>
+              <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="input" style={{ width: "130px" }} />
               <span className="hint">—</span>
-              <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="input" />
+              <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="input" style={{ width: "130px" }} />
             </div>
-          <div className="dateRange">
-            <input type="date" value={vencFromDate} onChange={(e) => setVencFromDate(e.target.value)} className="input" />
-            <span className="hint">—</span>
-            <input type="date" value={vencToDate} onChange={(e) => setVencToDate(e.target.value)} className="input" />
-          </div>
-          <select value={estadoFilter} onChange={(e) => setEstadoFilter(e.target.value)} className="select">
-            <option value="">Estado (todos)</option>
-            <option value="BORRADOR">Borrador</option>
-            <option value="EMITIDA">Emitida</option>
-            <option value="ENVIADA">Enviada</option>
-            <option value="POSPUESTA">Pospuesta</option>
-            <option value="PEND_REACTIVACION">Pend. reactivación</option>
-            <option value="CERRADA_PERDIDA">Cerrada perdida</option>
-            <option value="CERRADA_GANADA">Cerrada ganada</option>
-          </select>
-          <select value={tipoClienteFilter} onChange={(e) => setTipoClienteFilter(e.target.value)} className="select">
-            <option value="">Tipo (todos)</option>
-            {Array.from(new Set(quotes.map((x) => x.cliente_clasificacion).filter(Boolean) as string[]))
-              .sort((a, b) => a.localeCompare(b))
-              .map((t) => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-          </select>
-            <Button disabled={loading} onClick={() => void reloadQuotes()} className="btn--ghost" style={{ display: "flex", gap: 8 }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 4H20L14 12V19L10 21V12L4 4Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg> Filtrar
+            <Button disabled={loading} onClick={() => void reloadQuotes()} className="btn--primary">
+              Buscar
+            </Button>
+            <Button onClick={() => setShowAdvancedFilters(!showAdvancedFilters)} className="btn--ghost" style={{ display: "flex", gap: 8, backgroundColor: showAdvancedFilters ? "rgba(198, 255, 51, 0.15)" : "transparent" }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 4H20L14 12V19L10 21V12L4 4Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg> Filtros
             </Button>
           </div>
+
+          {showAdvancedFilters && (
+            <div className="filterToolbar" style={{ padding: "16px", background: "rgba(198, 255, 51, 0.15)", border: "1px solid var(--border)", borderRadius: "12px", marginTop: "-8px", marginBottom: "24px" }}>
+              <select value={estadoFilter} onChange={(e) => setEstadoFilter(e.target.value)} className="select" style={{ backgroundColor: "var(--surface)", flex: 1 }}>
+                <option value="">Estado (todos)</option>
+                <option value="BORRADOR">Borrador</option>
+                <option value="EMITIDA">Emitida</option>
+                <option value="ENVIADA">Enviada</option>
+                <option value="POSPUESTA">Pospuesta</option>
+                <option value="PEND_REACTIVACION">Pend. reactivación</option>
+                <option value="CERRADA_PERDIDA">Cerrada perdida</option>
+                <option value="CERRADA_GANADA">Cerrada ganada</option>
+              </select>
+              <select value={tipoClienteFilter} onChange={(e) => setTipoClienteFilter(e.target.value)} className="select" style={{ backgroundColor: "var(--surface)", flex: 1 }}>
+                <option value="">Tipo (todos)</option>
+                {Array.from(new Set(quotes.map((x) => x.cliente_clasificacion).filter(Boolean) as string[]))
+                  .sort((a, b) => a.localeCompare(b))
+                  .map((t) => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+              </select>
+              <Button className="btn--ghost" onClick={() => { setEstadoFilter(""); setTipoClienteFilter(""); setQ(""); setFromDate(""); setToDate(""); }} style={{ flex: "0 0 auto", backgroundColor: "var(--surface)", color: "var(--text-muted)", fontSize: "0.85rem", border: "1px solid var(--border)" }}>
+                Borrar filtros
+              </Button>
+            </div>
+          )}
         </div>
 
         {error ? <div className="error">{error}</div> : null}
@@ -370,8 +377,8 @@ export default function QuotesList() {
               {quotes.map((r) => {
                 const st = statusStyle(r.estado);
                 return (
-                  <tr key={r.id}>
-                    <td className="colCheckbox">
+                  <tr key={r.id} onClick={() => navigate(`/quotes/${r.id}`)} style={{ cursor: "pointer" }} className="tableRowHover">
+                    <td className="colCheckbox" onClick={(e) => e.stopPropagation()}>
                       <input type="checkbox" />
                     </td>
                     <td>{r.cliente_nombre_empresa}</td>
@@ -381,12 +388,12 @@ export default function QuotesList() {
                     <td className="cellMuted">
                       ${r.total_final} {r.moneda}
                     </td>
-                    <td className="hint">{r.cliente_clasificacion ?? "-"}</td>
+                    <td className="cellMuted">{r.cliente_clasificacion ?? "-"}</td>
                     <td>
                       <span className={st.className}>{st.label}</span>
                     </td>
                     <td className="cellMuted">{formatAlert(r.proxima_alerta)}</td>
-                    <td className="tableActionsCell">
+                    <td className="tableActionsCell" onClick={(e) => e.stopPropagation()}>
                       <ActionMenu
                         items={[
                           {

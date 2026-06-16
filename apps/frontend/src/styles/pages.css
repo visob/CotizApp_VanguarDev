@@ -1,14 +1,54 @@
 .page {
   display: grid;
   gap: 16px;
+  animation: pageFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes pageFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .pageHeader {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 15px;
+}
+
+.pageHeaderSearch {
+  position: relative;
+  width: 280px;
+}
+
+.pageHeaderSearchIcon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.pageHeaderSearchInput {
+  width: 100%;
+  height: 42px;
+  padding: 0 16px 0 40px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+}
+
+.pageHeaderSearchInput:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(125, 57, 235, 0.1);
 }
 
 .pageTitle {
@@ -25,7 +65,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 5px;
+  margin-top: 20px;
+  margin-bottom: 20px;
   overflow-x: auto;
   padding-bottom: 4px;
 }
@@ -34,24 +75,26 @@
   height: 36px;
   padding: 0 16px;
   border-radius: 999px;
-  background: var(--surface-soft);
-  color: inherit;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
   font-family: inherit;
   font-size: 13px;
-  font-weight: 600;
-  border: none;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
   white-space: nowrap;
 }
 
 .pageTabPill--active {
-  background: var(--primary);
-  color: var(--primary-text);
+  background: rgba(125, 57, 235, 0.08);
+  color: var(--primary);
+  border-color: rgba(125, 57, 235, 0.2);
 }
 
 .pageTabPill:not(.pageTabPill--active):hover {
-  background: rgba(0, 0, 0, 0.08);
+  background: rgba(198, 255, 51, 0.15);
+  color: var(--dark-accent);
 }
 
 .filterToolbar {
@@ -93,7 +136,7 @@
 
 .stack {
   display: grid;
-  gap: 10px;
+  gap: 15px;
 }
 
 .formGrid {
@@ -133,6 +176,29 @@
 
 .sectionTitle {
   font-weight: 600;
+  font-size: 18px;
+  margin-top: 5px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sectionTitle::before {
+  content: "";
+  display: block;
+  width: 4px;
+  height: 20px;
+  background-color: var(--primary);
+  border-radius: 4px;
+}
+
+.sectionSubtitle {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  margin-top: -4px;
+  margin-left: 14px;
 }
 
 .cellMuted {

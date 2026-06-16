@@ -39,7 +39,7 @@ export function SideNav(props: { onLogout: () => void; userLabel: string; userMe
 
   const itemsBottom: NavItem[] = [
     { key: "settings", label: role === "SuperAdmin" ? "Administración" : "Configuración", to: "/settings", icon: SettingsIcon },
-    { key: "support", label: "Soporte", icon: HelpIcon }
+    { key: "support", label: "Soporte", to: "/support", icon: HelpIcon }
   ];
 
   const iconColor = "currentColor";

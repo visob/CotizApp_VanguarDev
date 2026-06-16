@@ -1,29 +1,36 @@
 .layoutRoot {
-  min-height: 100vh;
+  height: 100vh;
   padding: 24px;
+  overflow: hidden;
 }
 
 .layoutRow {
   display: flex;
   gap: 18px;
   align-items: stretch;
+  height: 100%;
 }
 
 .layoutMain {
   flex: 1;
   min-width: 0;
+  height: 100%;
 }
 
 .layoutMainCard {
-  min-height: calc(100vh - 48px);
+  height: 100%;
   border-radius: 28px;
   background: #ffffff;
   border: none;
   box-shadow: var(--shadow);
   padding: 26px;
+  overflow-y: auto;
 }
 
 .sidenav {
+  position: sticky;
+  top: 24px;
+  height: calc(100vh - 48px);
   transition: width 180ms ease;
   background: var(--dark-accent);
   color: #ffffff;

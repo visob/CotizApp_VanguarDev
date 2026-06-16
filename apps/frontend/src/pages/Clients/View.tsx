@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useLocation } from "react-router-dom";
 import { Button } from "../../components/common/Button";
 import { useToast } from "../../context/ToastContext";
 import * as clientService from "../../services/client.service";
@@ -48,10 +48,10 @@ const GlobeIcon = () => (
   </svg>
 );
 
-const FileIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-    <path d="M13 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V9L13 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M13 2V9H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+const FileIcon = ({ size = 16, strokeWidth = 2 }: { size?: number, strokeWidth?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <path d="M13 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V9L13 2Z" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M13 2V9H20" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
 
@@ -84,13 +84,17 @@ const TrashIcon = () => (
 export function ClientView() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [client, setClient] = useState<Client | null>(null);
-  const [loading, setLoading] = useState(true);
+  const location = useLocation();
+  const stateClient = location.state?.client as Client | undefined;
+  
+  const [client, setClient] = useState<Client | null>(stateClient || null);
+  const [loading, setLoading] = useState(!stateClient);
   const [error, setError] = useState<string | null>(null);
   const { showToast } = useToast();
 
   useEffect(() => {
     async function load() {
+      if (stateClient) return;
       try {
         setLoading(true);
         // We fetch all and find by ID since the controller doesn't seem to expose a direct GET /:id? Wait, we can.
@@ -116,7 +120,7 @@ export function ClientView() {
 
   return (
     <div className="page">
-      <div className="pageHeader" style={{ borderBottom: "1px solid var(--border)", paddingBottom: 24, marginBottom: 8 }}>
+      <div className="pageHeader" style={{ borderBottom: "1px solid var(--border)", paddingBottom: 24, marginBottom: 24 }}>
         <div>
           <h1 className="pageTitle">Clientes</h1>
           <div className="pageSubtitle" style={{ marginTop: 8 }}>
@@ -132,15 +136,14 @@ export function ClientView() {
         </div>
       </div>
 
-      <h2 style={{ fontSize: 18, fontWeight: 600, margin: "10px 0 20px" }}>Ver cliente</h2>
-
       <div className="clientDetailGrid">
-        <div className="clientCard">
-          <h3 className="infoTitle">Información personal</h3>
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          <div style={{ fontWeight: 600, marginBottom: 12, opacity: 0.8 }}>Información de la empresa</div>
+          <div className="clientCard" style={{ flex: 1 }}>
           
-          <div className="clientInfoRow">
+            <div className="clientInfoRow">
             <div className="clientAvatarLg">
-              <UserIcon />
+              {client.nombre_empresa?.substring(0, 2).toUpperCase() || "C"}
             </div>
             <div>
               <div style={{ fontWeight: 600, fontSize: 16 }}>{client.nombre_empresa}</div>
@@ -175,75 +178,53 @@ export function ClientView() {
             </div>
           </div>
         </div>
-
-        <div className="stack">
-          <div style={{ fontWeight: 600 }}>Estado</div>
-          <div className={`clientCard ${client.estado?.toLowerCase() === "baja" ? "clientCard--baja" : ""}`} style={{ flex: 1, minHeight: 120 }}>
-            {client.estado || "Activo"}
-          </div>
-        </div>
-
-        <div className="stack">
-          <div style={{ fontWeight: 600 }}>Reactivaciones</div>
-          <div className="clientCard clientCard--empty" style={{ flex: 1, minHeight: 120 }}>
-            No hay reactivaciones previstas
-          </div>
-        </div>
       </div>
 
-      <div style={{ display: "flex", gap: 20, marginTop: 10 }}>
-        <div style={{ flex: 1 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 600, margin: "10px 0 16px" }}>Historial de cotizaciones</h3>
-          <div className="clientCard" style={{ padding: "8px 24px" }}>
-            <table className="table" style={{ width: "100%" }}>
-              <tbody>
-                <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                  <td style={{ padding: "16px 0", fontWeight: 500 }}>17/04/2026</td>
-                  <td style={{ padding: "16px 0", fontWeight: 500 }}>Productos: 5</td>
-                  <td style={{ padding: "16px 0", fontWeight: 600 }}>Monto: $22.000 ARS</td>
-                  <td style={{ padding: "16px 0", textAlign: "right" }}>
-                    <button style={{ background: "none", border: "none", cursor: "pointer", opacity: 0.6, marginRight: 16 }}><FileIcon /></button>
-                    <button style={{ background: "none", border: "none", cursor: "pointer", opacity: 0.6 }}><DownloadIcon /></button>
-                  </td>
-                </tr>
-                <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                  <td style={{ padding: "16px 0", fontWeight: 500 }}>17/04/2026</td>
-                  <td style={{ padding: "16px 0", fontWeight: 500 }}>Productos: 5</td>
-                  <td style={{ padding: "16px 0", fontWeight: 600 }}>Monto: $22.000 ARS</td>
-                  <td style={{ padding: "16px 0", textAlign: "right" }}>
-                    <button style={{ background: "none", border: "none", cursor: "pointer", opacity: 0.6, marginRight: 16 }}><FileIcon /></button>
-                    <button style={{ background: "none", border: "none", cursor: "pointer", opacity: 0.6 }}><DownloadIcon /></button>
-                  </td>
-                </tr>
-                <tr>
-                  <td style={{ padding: "16px 0", fontWeight: 500 }}>17/04/2026</td>
-                  <td style={{ padding: "16px 0", fontWeight: 500 }}>Productos: 5</td>
-                  <td style={{ padding: "16px 0", fontWeight: 600 }}>Monto: $22.000 ARS</td>
-                  <td style={{ padding: "16px 0", textAlign: "right" }}>
-                    <button style={{ background: "none", border: "none", cursor: "pointer", opacity: 0.6, marginRight: 16 }}><FileIcon /></button>
-                    <button style={{ background: "none", border: "none", cursor: "pointer", opacity: 0.6 }}><DownloadIcon /></button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+          <div style={{ display: "flex", gap: 24 }}>
+            <div style={{ display: "flex", flexDirection: "column", minWidth: 160 }}>
+              <div style={{ fontWeight: 600, marginBottom: 12, opacity: 0.8 }}>Estado actual</div>
+              <div className={`clientCard ${client.estado?.toLowerCase() === "activo" ? "clientCard--activo" : "clientCard--baja"}`} style={{ flex: 1, minHeight: 200, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 600 }}>
+                {client.estado || "Activo"}
+              </div>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
+              <div style={{ fontWeight: 600, marginBottom: 12, opacity: 0.8 }}>Reactivaciones</div>
+              <div className="clientCard clientCard--empty" style={{ flex: 1, minHeight: 200 }}>
+                No hay reactivaciones previstas
+              </div>
+            </div>
           </div>
-        </div>
-        
-        <div style={{ width: 64, marginTop: 42 }}>
-          <div style={{ fontWeight: 600, marginBottom: 16, textAlign: "center" }}>Acciones</div>
-          <div className="viewActions">
-            <Button className="btn--icon"><PlusIcon /></Button>
-            <Button className="btn--icon"><EditIcon /></Button>
-            <Button className="btn--icon" onClick={async () => {
-              if (!window.confirm("¿Seguro que deseas eliminar este cliente?")) return;
-              try {
-                await clientService.deleteClient(client.id);
-                showToast({ type: "success", text: "Cliente eliminado correctamente" });
-                navigate("/clients");
-              } catch (err) {
-                setError(getErrorMessage(err, {}, "No se pudo eliminar el cliente"));
-              }
-            }}><TrashIcon /></Button>
+
+          <div style={{ display: "flex", gap: 24 }}>
+            <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+              <div style={{ fontWeight: 600, marginBottom: 12, opacity: 0.8 }}>Historial de cotizaciones</div>
+              <div className="clientCard" style={{ padding: "0", flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <div className="emptyQuotes">
+                  <FileIcon size={40} strokeWidth={1} />
+                  <p>Aún no hay cotizaciones asociadas a este cliente.</p>
+                </div>
+              </div>
+            </div>
+            
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 64 }}>
+              <div style={{ fontWeight: 600, marginBottom: 16, textAlign: "center", opacity: 0.8 }}>Acciones</div>
+              <div className="viewActions">
+                <Button className="btn--icon" data-tooltip="Nueva cotización"><PlusIcon /></Button>
+                <Button className="btn--icon" data-tooltip="Editar cliente"><EditIcon /></Button>
+                <Button className="btn--icon" data-tooltip="Eliminar cliente" onClick={async () => {
+                  if (!window.confirm("¿Seguro que deseas eliminar este cliente?")) return;
+                  try {
+                    await clientService.deleteClient(client.id);
+                    showToast({ type: "success", text: "Cliente eliminado correctamente" });
+                    navigate("/clients");
+                  } catch (err) {
+                    setError(getErrorMessage(err, {}, "No se pudo eliminar el cliente"));
+                  }
+                }}><TrashIcon /></Button>
+              </div>
+            </div>
           </div>
         </div>
       </div>

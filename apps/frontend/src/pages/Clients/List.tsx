@@ -39,6 +39,9 @@ export function ClientsList() {
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
   const [activeTab, setActiveTab] = useState("Todos");
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [tipoFilter, setTipoFilter] = useState("");
+  const [estadoFilter, setEstadoFilter] = useState("");
   const [statusModalClient, setStatusModalClient] = useState<Client | null>(null);
   const [newStatus, setNewStatus] = useState("Activo");
   const navigate = useNavigate();
@@ -84,8 +87,17 @@ export function ClientsList() {
         );
       });
     }
+
+    if (tipoFilter) {
+      result = result.filter((c) => c.clasificacion === tipoFilter);
+    }
+    
+    if (estadoFilter) {
+      result = result.filter((c) => normalizeClientStatus(c.estado) === normalizeClientStatus(estadoFilter));
+    }
+
     return result;
-  }, [filter, items, activeTab]);
+  }, [filter, items, activeTab, tipoFilter, estadoFilter]);
 
   async function handleUpdateStatus() {
     if (!statusModalClient) return;
@@ -130,22 +142,39 @@ export function ClientsList() {
         <button className={`pageTabPill ${activeTab === "Bajas" ? "pageTabPill--active" : ""}`} onClick={() => setActiveTab("Bajas")}>Bajas</button>
       </div>
 
-      <div className="filterToolbar">
+      <div className="filterToolbar" style={{ marginBottom: showAdvancedFilters ? 16 : 24 }}>
         <input
           className="searchBarInput"
           placeholder="Buscar..."
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
         />
-        <div className="dateRange">
-          <input type="date" className="input" />
-          <span className="hint">—</span>
-          <input type="date" className="input" />
-        </div>
-          <Button className="btn--ghost btnInlineIcon">
-            <FilterIcon /> Filtrar
+        <Button onClick={() => setShowAdvancedFilters(!showAdvancedFilters)} className="btn--ghost" style={{ display: "flex", gap: 8, background: showAdvancedFilters ? "rgba(198, 255, 51, 0.15)" : "transparent" }}>
+          <FilterIcon /> Filtros
+        </Button>
+      </div>
+
+      {showAdvancedFilters && (
+        <div className="filterToolbar" style={{ padding: "16px", background: "rgba(198, 255, 51, 0.15)", border: "1px solid var(--border)", borderRadius: "12px", marginTop: "-8px", marginBottom: "24px" }}>
+          <select value={estadoFilter} onChange={(e) => setEstadoFilter(e.target.value)} className="select" style={{ backgroundColor: "var(--surface)", flex: 1 }}>
+            <option value="">Estado (todos)</option>
+            <option value="activo">Activo</option>
+            <option value="pausado">Pausado</option>
+            <option value="desactivado">Desactivado / Baja</option>
+          </select>
+          <select value={tipoFilter} onChange={(e) => setTipoFilter(e.target.value)} className="select" style={{ backgroundColor: "var(--surface)", flex: 1 }}>
+            <option value="">Tipo (todos)</option>
+            {Array.from(new Set(items.map((x) => x.clasificacion).filter(Boolean) as string[]))
+              .sort((a, b) => a.localeCompare(b))
+              .map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+          </select>
+          <Button className="btn--ghost" onClick={() => { setFilter(""); setEstadoFilter(""); setTipoFilter(""); }} style={{ flex: "0 0 auto", backgroundColor: "var(--surface)", color: "var(--text-muted)", fontSize: "0.85rem", border: "1px solid var(--border)" }}>
+            Borrar filtros
           </Button>
         </div>
+      )}
       </div>
 
       {error ? <div className="error">{error}</div> : null}
@@ -173,7 +202,7 @@ export function ClientsList() {
               <tr key={c.id}>
                 <td className="colCheckbox"><input type="checkbox" /></td>
                 <td style={{ fontWeight: 500 }}>
-                  <Link className="tableLink" to={`/clients/${c.id}`}>
+                  <Link className="tableLink" to={`/clients/${c.id}`} state={{ client: c }}>
                     {c.nombre_empresa}
                   </Link>
                 </td>

@@ -142,9 +142,7 @@ export function GeneralCatalogManager() {
   }
 
   return (
-    <div className="settingsWideCard">
-      <h2 className="settingsSectionTitle">Catálogos de Cotización</h2>
-      <div className="hint">Estas opciones pertenecen solo a la empresa actual.</div>
+    <>
       {error ? <div className="error" style={{ marginTop: 12 }}>{error}</div> : null}
       {loading ? <div className="hint" style={{ marginTop: 12 }}>Cargando catálogos...</div> : null}
 
@@ -153,54 +151,59 @@ export function GeneralCatalogManager() {
           const meta = sectionMeta[tipo];
           const list = grouped[tipo];
           return (
-            <div key={tipo} className="card" style={{ padding: 16 }}>
-              <div className="sectionTitle">{meta.title}</div>
-              <div className="hint" style={{ marginTop: 4 }}>{meta.description}</div>
+            <div id={`section-${tipo}`} key={tipo} className="card" style={{ padding: 24, border: "1px solid var(--border)", boxShadow: "var(--shadow)" }}>
+              <div className="sectionTitle" style={{ fontSize: "1.1rem" }}>{meta.title}</div>
+              <div className="hint" style={{ marginTop: 4, marginBottom: 20 }}>{meta.description}</div>
 
-              <div className="formGrid formGrid--2" style={{ marginTop: 12 }}>
-                <label className="field">
-                  <span className="label">Etiqueta</span>
-                  <input
-                    className="input"
-                    value={drafts[tipo].label}
-                    onChange={(e) =>
-                      setDrafts((prev) => ({
-                        ...prev,
-                        [tipo]: { ...prev[tipo], label: e.target.value }
-                      }))
-                    }
-                  />
-                </label>
-                {!meta.hideValueInput ? (
-                  <label className="field">
-                    <span className="label">{meta.valueLabel}</span>
+              <div style={{ padding: "20px 0", display: "flex", flexDirection: "column", gap: "16px" }}>
+                <div style={{ fontWeight: 600, fontSize: "0.95rem", color: "var(--text-primary)" }}>Agregar nueva opción</div>
+                <div style={{ display: "flex", gap: "16px", alignItems: "flex-end" }}>
+                  <label className="field" style={{ flex: 1, margin: 0 }}>
+                    <span className="label">Etiqueta</span>
                     <input
                       className="input"
-                      value={drafts[tipo].value}
+                      value={drafts[tipo].label}
                       onChange={(e) =>
                         setDrafts((prev) => ({
                           ...prev,
-                          [tipo]: { ...prev[tipo], value: e.target.value }
+                          [tipo]: { ...prev[tipo], label: e.target.value }
                         }))
                       }
-                      placeholder={tipo === "tipo_iva" ? "Ej: 21 o 10.5" : ""}
+                      placeholder="Ej: Transferencia Bancaria"
+                      style={{ background: "var(--surface)" }}
                     />
                   </label>
-                ) : (
-                  <div className="hint" style={{ alignSelf: "end" }}>
+                  {!meta.hideValueInput && (
+                    <label className="field" style={{ flex: 1, margin: 0 }}>
+                      <span className="label">{meta.valueLabel}</span>
+                      <input
+                        className="input"
+                        value={drafts[tipo].value}
+                        onChange={(e) =>
+                          setDrafts((prev) => ({
+                            ...prev,
+                            [tipo]: { ...prev[tipo], value: e.target.value }
+                          }))
+                        }
+                        placeholder={tipo === "tipo_iva" ? "Ej: 21 o 10.5" : ""}
+                        style={{ background: "var(--surface)" }}
+                      />
+                    </label>
+                  )}
+                  <Button
+                    className="btn--primary"
+                    disabled={saving}
+                    onClick={() => void handleCreate(tipo)}
+                    style={{ height: "42px", minWidth: "120px" }}
+                  >
+                    {saving ? "Guardando..." : "Agregar"}
+                  </Button>
+                </div>
+                {meta.hideValueInput && (
+                  <div className="hint" style={{ marginTop: "-4px" }}>
                     El valor interno será el mismo texto de la etiqueta.
                   </div>
                 )}
-              </div>
-
-              <div className="row" style={{ marginTop: 12, justifyContent: "flex-end" }}>
-                <Button
-                  className="btn--primary"
-                  disabled={saving}
-                  onClick={() => void handleCreate(tipo)}
-                >
-                  {saving ? "Guardando..." : "Agregar opción"}
-                </Button>
               </div>
 
               <div className="tableWrap" style={{ marginTop: 12 }}>
@@ -312,6 +315,6 @@ export function GeneralCatalogManager() {
           );
         })}
       </div>
-    </div>
+    </>
   );
 }
