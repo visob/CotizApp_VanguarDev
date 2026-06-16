@@ -34,7 +34,6 @@ export function ProductsList() {
   const errorMessages: Record<string, string> = {
     duplicate_nombre: "Ya existe un producto con ese nombre en esta empresa.",
     duplicate_sku: "Ya existe un producto con ese SKU en esta empresa.",
-    stock_invalido: "El stock ingresado no es válido.",
     estado_invalido: "El estado seleccionado no es válido."
   };
 
@@ -96,12 +95,12 @@ export function ProductsList() {
     
     const min = parseFloat(precioMin);
     if (!isNaN(min)) {
-      result = result.filter((p) => Number(p.precio) >= min);
+      result = result.filter((p) => Number(p.precio_ars) >= min);
     }
     
     const max = parseFloat(precioMax);
     if (!isNaN(max)) {
-      result = result.filter((p) => Number(p.precio) <= max);
+      result = result.filter((p) => Number(p.precio_ars) <= max);
     }
 
     return result;
@@ -192,10 +191,10 @@ export function ProductsList() {
             <tr>
               <th className="checkboxCol"><input type="checkbox" /></th>
               <th>Nombre</th>
+              <th>Tipo</th>
               <th>SKU</th>
               <th>Descripción</th>
               <th>Precio</th>
-              <th>Stock</th>
               <th>Estado</th>
               <th className="colActions">Acciones</th>
             </tr>
@@ -204,7 +203,6 @@ export function ProductsList() {
             {filtered.map((p) => {
               const ars = parseMoney(p.precio_ars) ?? 0;
               const usd = parseMoney(p.precio_usd) ?? 0;
-              const stockLabel = p.stock === -1 ? "Ilimitado" : p.stock;
               const statusMeta = getProductStatusMeta(p.estado);
               
               return (
@@ -219,6 +217,7 @@ export function ProductsList() {
                       {p.nombre}
                     </button>
                   </td>
+                  <td>{p.tipo_producto || "-"}</td>
                   <td>{p.sku ?? "-"}</td>
                   <td className="colDescription">
                     {p.descripcion ?? "-"}
@@ -227,7 +226,6 @@ export function ProductsList() {
                     <div>{formatMoney(ars, "ARS")}</div>
                     <div className="priceUsd">{formatMoney(usd, "USD")}</div>
                   </td>
-                  <td>{stockLabel}</td>
                   <td>
                     <span className={statusMeta.className}>
                       {statusMeta.label}

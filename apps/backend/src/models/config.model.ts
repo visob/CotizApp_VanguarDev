@@ -7,7 +7,7 @@ export type ConfigRow = {
   valor: string;
 };
 
-export type CatalogOptionType = "forma_pago" | "lugar_entrega" | "tipo_iva" | "tipo_cliente";
+export type CatalogOptionType = "forma_pago" | "lugar_entrega" | "tipo_iva" | "tipo_cliente" | "tipo_producto";
 
 export type CatalogOptionRow = {
   id: string | number;
@@ -30,6 +30,7 @@ export const DEFAULT_CATALOG_OPTIONS: ReadonlyArray<{
   { tipo: "forma_pago", label: "Efectivo", value: "efectivo" },
   { tipo: "lugar_entrega", label: "Deposito", value: "deposito" },
   { tipo: "tipo_iva", label: "IVA 21%", value: "21" },
+  { tipo: "tipo_producto", label: "General", value: "General" },
   { tipo: "tipo_cliente", label: "Consumidor Final", value: "Consumidor Final" },
   { tipo: "tipo_cliente", label: "Cliente final", value: "Cliente final" },
   { tipo: "tipo_cliente", label: "Distribuidor", value: "Distribuidor" }

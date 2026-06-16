@@ -1,7 +1,7 @@
 export type UserRole = "SuperAdmin" | "Admin" | "Vendedor";
 
 export type CurrencyCode = "ARS" | "USD";
-export type CatalogOptionType = "forma_pago" | "lugar_entrega" | "tipo_iva" | "tipo_cliente";
+export type CatalogOptionType = "forma_pago" | "lugar_entrega" | "tipo_iva" | "tipo_cliente" | "tipo_producto";
 
 export interface User {
   id: number;
@@ -94,9 +94,9 @@ export interface DashboardNote {
 export interface Product {
   id: number;
   nombre: string;
+  tipo_producto: string;
   precio_ars: string;
   precio_usd: string;
-  stock: number;
   sku?: string | null;
   descripcion?: string | null;
   estado?: string;

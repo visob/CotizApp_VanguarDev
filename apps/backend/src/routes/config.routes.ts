@@ -7,7 +7,13 @@ import { getScopedCompanyId } from "../utils/request-scope.js";
 export const configRouter = Router();
 
 function isCatalogType(value: unknown): value is configModel.CatalogOptionType {
-  return value === "forma_pago" || value === "lugar_entrega" || value === "tipo_iva" || value === "tipo_cliente";
+  return (
+    value === "forma_pago" ||
+    value === "lugar_entrega" ||
+    value === "tipo_iva" ||
+    value === "tipo_cliente" ||
+    value === "tipo_producto"
+  );
 }
 
 function toNonEmptyString(value: unknown) {

@@ -4,9 +4,9 @@ export type ProductRow = {
   id: string | number;
   id_empresa?: string | number;
   nombre: string;
+  tipo_producto: string;
   precio_ars: string;
   precio_usd: string;
-  stock: number;
   sku: string | null;
   descripcion: string | null;
   estado: string;
@@ -15,9 +15,9 @@ export type ProductRow = {
 
 export type ProductInput = {
   nombre: string;
+  tipo_producto: string;
   precio_ars: string;
   precio_usd: string;
-  stock: number;
   sku: string | null;
   descripcion: string | null;
   estado: string;
@@ -36,7 +36,7 @@ export async function listProducts(companyId?: number | null) {
         })()
       : "";
   const result = await pool.query<ProductRow>(
-    `select id, nombre, precio_ars, precio_usd, stock, sku, descripcion, estado, garantia
+    `select id, nombre, tipo_producto, precio_ars, precio_usd, sku, descripcion, estado, garantia
      from productos
      ${whereSql}
      order by id desc`,
@@ -55,7 +55,7 @@ export async function getProductById(id: number, companyId?: number | null) {
         })()
       : "";
   const result = await pool.query<ProductRow>(
-    `select id, nombre, precio_ars, precio_usd, stock, sku, descripcion, estado, garantia
+    `select id, nombre, tipo_producto, precio_ars, precio_usd, sku, descripcion, estado, garantia
      from productos
      where id = $1
      ${companySql}
@@ -68,16 +68,16 @@ export async function getProductById(id: number, companyId?: number | null) {
 export async function createProduct(companyId: number, input: ProductInput) {
   const result = await pool.query<ProductRow>(
     `
-      insert into productos (id_empresa, nombre, precio_ars, precio_usd, stock, sku, descripcion, estado, garantia)
+      insert into productos (id_empresa, nombre, tipo_producto, precio_ars, precio_usd, sku, descripcion, estado, garantia)
       values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-      returning id, nombre, precio_ars, precio_usd, stock, sku, descripcion, estado, garantia
+      returning id, nombre, tipo_producto, precio_ars, precio_usd, sku, descripcion, estado, garantia
     `,
     [
       companyId,
       input.nombre,
+      input.tipo_producto,
       input.precio_ars,
       input.precio_usd,
-      input.stock,
       input.sku,
       input.descripcion,
       input.estado || "Activo",
@@ -141,9 +141,9 @@ export async function updateProduct(id: number, input: ProductInput, companyId?:
   const values: unknown[] = [
     id,
     input.nombre,
+    input.tipo_producto,
     input.precio_ars,
     input.precio_usd,
-    input.stock,
     input.sku,
     input.descripcion,
     input.estado || "Activo",
@@ -161,16 +161,16 @@ export async function updateProduct(id: number, input: ProductInput, companyId?:
       update productos
       set
         nombre = $2,
-        precio_ars = $3,
-        precio_usd = $4,
-        stock = $5,
+        tipo_producto = $3,
+        precio_ars = $4,
+        precio_usd = $5,
         sku = $6,
         descripcion = $7,
         estado = $8,
         garantia = $9
       where id = $1
       ${companySql}
-      returning id, nombre, precio_ars, precio_usd, stock, sku, descripcion, estado, garantia
+      returning id, nombre, tipo_producto, precio_ars, precio_usd, sku, descripcion, estado, garantia
     `,
     values
   );

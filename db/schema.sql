@@ -45,9 +45,9 @@ CREATE TABLE IF NOT EXISTS productos (
   id BIGSERIAL PRIMARY KEY,
   id_empresa BIGINT REFERENCES empresas(id),
   nombre TEXT NOT NULL,
+  tipo_producto TEXT NOT NULL DEFAULT 'General',
   precio_ars NUMERIC(12, 2) NOT NULL,
-  precio_usd NUMERIC(12, 2) NOT NULL,
-  stock INTEGER NOT NULL
+  precio_usd NUMERIC(12, 2) NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS cotizaciones (
@@ -150,10 +150,15 @@ ALTER TABLE clientes ADD COLUMN IF NOT EXISTS estado TEXT DEFAULT 'Activo';
 ALTER TABLE clientes ADD COLUMN IF NOT EXISTS ult_contacto TIMESTAMPTZ;
 
 ALTER TABLE productos ADD COLUMN IF NOT EXISTS id_empresa BIGINT REFERENCES empresas(id);
+ALTER TABLE productos ADD COLUMN IF NOT EXISTS tipo_producto TEXT;
 ALTER TABLE productos ADD COLUMN IF NOT EXISTS sku TEXT;
 ALTER TABLE productos ADD COLUMN IF NOT EXISTS descripcion TEXT;
 ALTER TABLE productos ADD COLUMN IF NOT EXISTS estado TEXT DEFAULT 'Activo';
 ALTER TABLE productos ADD COLUMN IF NOT EXISTS garantia TEXT;
+ALTER TABLE productos DROP COLUMN IF EXISTS stock;
+UPDATE productos SET tipo_producto = 'General' WHERE tipo_producto IS NULL OR trim(tipo_producto) = '';
+ALTER TABLE productos ALTER COLUMN tipo_producto SET DEFAULT 'General';
+ALTER TABLE productos ALTER COLUMN tipo_producto SET NOT NULL;
 
 ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS id_empresa BIGINT REFERENCES empresas(id);
 ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS fecha_vencimiento TIMESTAMPTZ;
@@ -292,6 +297,7 @@ SELECT e.id, defaults.tipo, defaults.label, defaults.value, true
 FROM empresas e
 CROSS JOIN (
   VALUES
+    ('tipo_producto', 'General', 'General'),
     ('tipo_cliente', 'Consumidor Final', 'Consumidor Final'),
     ('tipo_cliente', 'Cliente final', 'Cliente final'),
     ('tipo_cliente', 'Distribuidor', 'Distribuidor')

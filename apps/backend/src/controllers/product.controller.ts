@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import { getActiveCatalogOptionByValue } from "../models/config.model.js";
 import {
   createProduct,
   deleteProduct,
@@ -19,15 +20,6 @@ function parsePrice(value: unknown) {
         ? Number(value.replace(",", "."))
         : NaN;
   return Number.isFinite(n) && n >= 0 ? n : null;
-}
-
-function parseStock(value: unknown) {
-  const n = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
-  if (!Number.isFinite(n)) {
-    return null;
-  }
-  const int = Math.trunc(n);
-  return int >= -1 ? int : null;
 }
 
 function toNonEmptyString(value: unknown) {
@@ -73,9 +65,9 @@ export async function createProductHandler(req: Request, res: Response) {
   }
 
   const nombre = toNonEmptyString(req.body?.nombre);
+  const tipoProducto = toNonEmptyString(req.body?.tipo_producto);
   const precioArs = parsePrice(req.body?.precio_ars);
   const precioUsd = parsePrice(req.body?.precio_usd);
-  const stock = parseStock(req.body?.stock);
   const sku = toNonEmptyString(req.body?.sku);
   const descripcion = toNonEmptyString(req.body?.descripcion);
   const estado = toNonEmptyString(req.body?.estado) ?? "Activo";
@@ -85,19 +77,24 @@ export async function createProductHandler(req: Request, res: Response) {
     res.status(400).json({ ok: false, error: "nombre_required" });
     return;
   }
+  if (!tipoProducto) {
+    res.status(400).json({ ok: false, error: "tipo_producto_required" });
+    return;
+  }
 
   if (precioArs === null || precioUsd === null) {
     res.status(400).json({ ok: false, error: "precio_ars_y_usd_requeridos" });
     return;
   }
 
-  if (stock === null) {
-    res.status(400).json({ ok: false, error: "stock_invalido" });
+  if (!allowedProductStates.has(estado)) {
+    res.status(400).json({ ok: false, error: "estado_invalido" });
     return;
   }
 
-  if (!allowedProductStates.has(estado)) {
-    res.status(400).json({ ok: false, error: "estado_invalido" });
+  const tipoProductoOption = await getActiveCatalogOptionByValue(companyId, "tipo_producto", tipoProducto);
+  if (!tipoProductoOption) {
+    res.status(400).json({ ok: false, error: "tipo_producto_invalido" });
     return;
   }
 
@@ -109,9 +106,9 @@ export async function createProductHandler(req: Request, res: Response) {
 
   const item = await createProduct(companyId, {
     nombre,
+    tipo_producto: tipoProducto,
     precio_ars: String(precioArs),
     precio_usd: String(precioUsd),
-    stock,
     sku,
     descripcion,
     estado,
@@ -134,9 +131,9 @@ export async function updateProductHandler(req: Request, res: Response) {
   }
 
   const nombre = toNonEmptyString(req.body?.nombre);
+  const tipoProducto = toNonEmptyString(req.body?.tipo_producto);
   const precioArs = parsePrice(req.body?.precio_ars);
   const precioUsd = parsePrice(req.body?.precio_usd);
-  const stock = parseStock(req.body?.stock);
   const sku = toNonEmptyString(req.body?.sku);
   const descripcion = toNonEmptyString(req.body?.descripcion);
   const estado = toNonEmptyString(req.body?.estado) ?? "Activo";
@@ -146,19 +143,24 @@ export async function updateProductHandler(req: Request, res: Response) {
     res.status(400).json({ ok: false, error: "nombre_required" });
     return;
   }
+  if (!tipoProducto) {
+    res.status(400).json({ ok: false, error: "tipo_producto_required" });
+    return;
+  }
 
   if (precioArs === null || precioUsd === null) {
     res.status(400).json({ ok: false, error: "precio_ars_y_usd_requeridos" });
     return;
   }
 
-  if (stock === null) {
-    res.status(400).json({ ok: false, error: "stock_invalido" });
+  if (!allowedProductStates.has(estado)) {
+    res.status(400).json({ ok: false, error: "estado_invalido" });
     return;
   }
 
-  if (!allowedProductStates.has(estado)) {
-    res.status(400).json({ ok: false, error: "estado_invalido" });
+  const tipoProductoOption = await getActiveCatalogOptionByValue(companyId, "tipo_producto", tipoProducto);
+  if (!tipoProductoOption) {
+    res.status(400).json({ ok: false, error: "tipo_producto_invalido" });
     return;
   }
 
@@ -170,9 +172,9 @@ export async function updateProductHandler(req: Request, res: Response) {
 
   const item = await updateProduct(id, {
     nombre,
+    tipo_producto: tipoProducto,
     precio_ars: String(precioArs),
     precio_usd: String(precioUsd),
-    stock,
     sku,
     descripcion,
     estado,

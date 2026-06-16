@@ -11,6 +11,7 @@ import "../../styles/products.css";
 
 type ProductDraft = Omit<Product, "id">;
 type WarrantyUnit = "sin_garantia" | "dia" | "mes" | "anio";
+const fallbackProductTypeOptions = ["General"];
 
 function parseWarranty(value: string | null | undefined): { quantity: string; unit: WarrantyUnit } {
   const raw = value?.trim();
@@ -62,9 +63,9 @@ function buildWarranty(quantity: string, unit: WarrantyUnit) {
 
 const emptyDraft: ProductDraft = {
   nombre: "",
+  tipo_producto: "General",
   sku: "",
   descripcion: "",
-  stock: 0,
   precio_ars: "",
   precio_usd: "",
   garantia: "12 Meses",
@@ -73,8 +74,9 @@ const emptyDraft: ProductDraft = {
 
 const productErrorMessages: Record<string, string> = {
   nombre_required: "El nombre del producto es obligatorio.",
+  tipo_producto_required: "El tipo de producto es obligatorio.",
+  tipo_producto_invalido: "El tipo de producto seleccionado no es valido o está inactivo.",
   precio_ars_y_usd_requeridos: "Debes informar precios validos para ARS y USD.",
-  stock_invalido: "El stock debe ser un numero entero mayor o igual a 0, o dejarse vacio para ilimitado.",
   duplicate_nombre: "Ya existe un producto con ese nombre en esta empresa.",
   duplicate_sku: "Ya existe un producto con ese SKU en esta empresa.",
   estado_invalido: "El estado seleccionado no es valido."
@@ -84,7 +86,7 @@ export function ProductCreate() {
   const { id } = useParams();
   const isEditMode = Boolean(id);
   const [draft, setDraft] = useState<ProductDraft>(emptyDraft);
-  const [stockInput, setStockInput] = useState("");
+  const [productTypeOptions, setProductTypeOptions] = useState<string[]>(fallbackProductTypeOptions);
   const [warrantyQuantity, setWarrantyQuantity] = useState("12");
   const [warrantyUnit, setWarrantyUnit] = useState<WarrantyUnit>("mes");
   const [loading, setLoading] = useState(false);
@@ -93,6 +95,23 @@ export function ProductCreate() {
   const { showToast } = useToast();
 
   const [exchangeRate, setExchangeRate] = useState(1000); // Default fallback
+
+  useEffect(() => {
+    async function loadProductTypes() {
+      try {
+        const options = await configService.listCatalogOptions({ tipo: "tipo_producto" });
+        const labels = options
+          .map((option) => option.label.trim())
+          .filter(Boolean);
+        if (labels.length > 0) {
+          setProductTypeOptions(Array.from(new Set(labels)));
+        }
+      } catch {
+        setProductTypeOptions(fallbackProductTypeOptions);
+      }
+    }
+    void loadProductTypes();
+  }, []);
 
   useEffect(() => {
     async function fetchRate() {
@@ -108,6 +127,20 @@ export function ProductCreate() {
   }, []);
 
   useEffect(() => {
+    setDraft((current) => {
+      const currentType = current.tipo_producto?.trim();
+      if (currentType) {
+        return current;
+      }
+
+      return {
+        ...current,
+        tipo_producto: productTypeOptions[0] ?? emptyDraft.tipo_producto
+      };
+    });
+  }, [productTypeOptions]);
+
+  useEffect(() => {
     if (!id) return;
 
     async function loadProduct() {
@@ -120,7 +153,6 @@ export function ProductCreate() {
           ...emptyDraft,
           ...rest
         });
-        setStockInput(product.stock === -1 ? "" : String(product.stock));
         const warranty = parseWarranty(product.garantia);
         setWarrantyQuantity(warranty.quantity || "12");
         setWarrantyUnit(warranty.unit);
@@ -163,6 +195,11 @@ export function ProductCreate() {
       setError("El nombre del producto es obligatorio");
       return;
     }
+    const tipoProducto = draft.tipo_producto?.trim();
+    if (!tipoProducto) {
+      setError("El tipo de producto es obligatorio");
+      return;
+    }
 
     const arsText = draft.precio_ars.trim();
     const usdText = draft.precio_usd.trim();
@@ -179,15 +216,6 @@ export function ProductCreate() {
     if (isNaN(ars)) ars = 0;
     if (isNaN(usd)) usd = 0;
 
-    let stockParsed = parseInt(stockInput.trim(), 10);
-    if (isNaN(stockParsed) || stockInput.trim() === "") {
-      stockParsed = -1; // Ilimitado
-    }
-    if (stockParsed < -1) {
-      setError("El stock no puede ser negativo");
-      return;
-    }
-
     const garantia = buildWarranty(warrantyQuantity, warrantyUnit);
     if (!garantia) {
       setError("La garantía debe tener una cantidad entera mayor a 0");
@@ -199,9 +227,9 @@ export function ProductCreate() {
       const payload = {
         ...draft,
         nombre,
+        tipo_producto: tipoProducto,
         precio_ars: ars.toString(),
         precio_usd: usd.toString(),
-        stock: stockParsed,
         garantia
       };
 
@@ -263,13 +291,18 @@ export function ProductCreate() {
           </label>
 
           <label className="field">
-            <span className="label">Stock</span>
-            <input
-              placeholder="Ilimitado"
-              value={stockInput}
-              onChange={(e) => setStockInput(e.target.value)}
-              className="input"
-            />
+            <span className="label">Tipo de producto</span>
+            <select
+              value={draft.tipo_producto ?? ""}
+              onChange={(e) => setDraft((d) => ({ ...d, tipo_producto: e.target.value }))}
+              className="select"
+            >
+              {productTypeOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
           </label>
 
           <label className="field">
