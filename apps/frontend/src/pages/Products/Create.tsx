@@ -74,8 +74,10 @@ const emptyDraft: ProductDraft = {
 
 const productErrorMessages: Record<string, string> = {
   nombre_required: "El nombre del producto es obligatorio.",
+  sku_required: "El SKU del producto es obligatorio.",
   tipo_producto_required: "El tipo de producto es obligatorio.",
   tipo_producto_invalido: "El tipo de producto seleccionado no es valido o está inactivo.",
+  garantia_required: "La garantía del producto es obligatoria.",
   precio_ars_y_usd_requeridos: "Debes informar precios validos para ARS y USD.",
   duplicate_nombre: "Ya existe un producto con ese nombre en esta empresa.",
   duplicate_sku: "Ya existe un producto con ese SKU en esta empresa.",
@@ -195,6 +197,11 @@ export function ProductCreate() {
       setError("El nombre del producto es obligatorio");
       return;
     }
+    const sku = draft.sku?.trim();
+    if (!sku) {
+      setError("El SKU del producto es obligatorio");
+      return;
+    }
     const tipoProducto = draft.tipo_producto?.trim();
     if (!tipoProducto) {
       setError("El tipo de producto es obligatorio");
@@ -217,6 +224,10 @@ export function ProductCreate() {
     if (isNaN(usd)) usd = 0;
 
     const garantia = buildWarranty(warrantyQuantity, warrantyUnit);
+    if (warrantyUnit === "sin_garantia") {
+      setError("La garantía del producto es obligatoria");
+      return;
+    }
     if (!garantia) {
       setError("La garantía debe tener una cantidad entera mayor a 0");
       return;
@@ -227,6 +238,7 @@ export function ProductCreate() {
       const payload = {
         ...draft,
         nombre,
+        sku,
         tipo_producto: tipoProducto,
         precio_ars: ars.toString(),
         precio_usd: usd.toString(),
@@ -278,6 +290,7 @@ export function ProductCreate() {
               value={draft.nombre}
               onChange={(e) => setDraft((d) => ({ ...d, nombre: e.target.value }))}
               className="input"
+              required
             />
           </label>
 
@@ -287,6 +300,7 @@ export function ProductCreate() {
               value={draft.sku ?? ""}
               onChange={(e) => setDraft((d) => ({ ...d, sku: e.target.value }))}
               className="input"
+              required
             />
           </label>
 
@@ -317,6 +331,7 @@ export function ProductCreate() {
                 className="input"
                 placeholder="Cantidad"
                 disabled={warrantyUnit === "sin_garantia"}
+                required
               />
               <select
                 value={warrantyUnit}
@@ -351,6 +366,7 @@ export function ProductCreate() {
               value={draft.precio_usd}
               onChange={(e) => handleUsdChange(e.target.value)}
               className="input"
+              required
             />
           </label>
 
@@ -370,6 +386,7 @@ export function ProductCreate() {
               value={draft.precio_ars}
               onChange={(e) => handleArsChange(e.target.value)}
               className="input"
+              required
             />
           </label>
         </div>

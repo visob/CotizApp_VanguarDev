@@ -5,13 +5,12 @@ import { NoteIcon, ReturnIcon } from "../../components/common/Icons";
 import { DownloadIcon } from "lucide-react";
 import { useToast } from "../../context/ToastContext";
 import * as quoteService from "../../services/quote.service";
+import { extractIsoDate, formatIsoDate } from "../../utils/date";
 import { getErrorMessage } from "../../utils/feedback";
 import "../../styles/quotes.css";
 
 function formatDate(iso: string | null) {
-  if (!iso) return "-";
-  const d = new Date(iso);
-  return Number.isFinite(d.getTime()) ? d.toLocaleDateString("es-AR") : iso;
+  return formatIsoDate(iso, iso ?? "-");
 }
 
 function formatDateTime(iso: string | null) {
@@ -78,10 +77,10 @@ export default function QuotesView() {
       const res = await quoteService.getQuote(Number(id));
       setData(res);
       setEstado(res.quote.estado);
-      setProximaAlerta(res.quote.proxima_alerta ? res.quote.proxima_alerta.split("T")[0] : "");
-      setFechaReactivacion1(res.quote.fecha_reactivacion_1 ? res.quote.fecha_reactivacion_1.split("T")[0] : "");
-      setFechaReactivacion2(res.quote.fecha_reactivacion_2 ? res.quote.fecha_reactivacion_2.split("T")[0] : "");
-      setFechaReactivacion3(res.quote.fecha_reactivacion_3 ? res.quote.fecha_reactivacion_3.split("T")[0] : "");
+      setProximaAlerta(extractIsoDate(res.quote.proxima_alerta) ?? "");
+      setFechaReactivacion1(extractIsoDate(res.quote.fecha_reactivacion_1) ?? "");
+      setFechaReactivacion2(extractIsoDate(res.quote.fecha_reactivacion_2) ?? "");
+      setFechaReactivacion3(extractIsoDate(res.quote.fecha_reactivacion_3) ?? "");
       setReactivacionActiva((res.quote.reactivacion_activa as 1 | 2 | 3) || 1);
     } catch (err) {
       setError(getErrorMessage(err, {}, "No se pudo cargar la cotización"));
@@ -466,10 +465,10 @@ export default function QuotesView() {
                 saving ||
                 (
                   estado === q.estado &&
-                  proximaAlerta === (q.proxima_alerta ? q.proxima_alerta.split("T")[0] : "") &&
-                  fechaReactivacion1 === (q.fecha_reactivacion_1 ? q.fecha_reactivacion_1.split("T")[0] : "") &&
-                  fechaReactivacion2 === (q.fecha_reactivacion_2 ? q.fecha_reactivacion_2.split("T")[0] : "") &&
-                  fechaReactivacion3 === (q.fecha_reactivacion_3 ? q.fecha_reactivacion_3.split("T")[0] : "") &&
+                  proximaAlerta === (extractIsoDate(q.proxima_alerta) ?? "") &&
+                  fechaReactivacion1 === (extractIsoDate(q.fecha_reactivacion_1) ?? "") &&
+                  fechaReactivacion2 === (extractIsoDate(q.fecha_reactivacion_2) ?? "") &&
+                  fechaReactivacion3 === (extractIsoDate(q.fecha_reactivacion_3) ?? "") &&
                   reactivacionActiva === q.reactivacion_activa
                 )
               }

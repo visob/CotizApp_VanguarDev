@@ -30,6 +30,12 @@ function toNonEmptyString(value: unknown) {
   return trimmed.length ? trimmed : null;
 }
 
+function hasRequiredWarranty(value: string | null) {
+  if (!value) return false;
+  const normalized = value.trim().toLowerCase();
+  return normalized !== "sin garantia" && normalized !== "sin garantía";
+}
+
 export async function listProductsHandler(_req: Request, res: Response) {
   const items = await listProducts(getScopedCompanyId(_req));
   res.json({
@@ -77,8 +83,16 @@ export async function createProductHandler(req: Request, res: Response) {
     res.status(400).json({ ok: false, error: "nombre_required" });
     return;
   }
+  if (!sku) {
+    res.status(400).json({ ok: false, error: "sku_required" });
+    return;
+  }
   if (!tipoProducto) {
     res.status(400).json({ ok: false, error: "tipo_producto_required" });
+    return;
+  }
+  if (!hasRequiredWarranty(garantia)) {
+    res.status(400).json({ ok: false, error: "garantia_required" });
     return;
   }
 
@@ -143,8 +157,16 @@ export async function updateProductHandler(req: Request, res: Response) {
     res.status(400).json({ ok: false, error: "nombre_required" });
     return;
   }
+  if (!sku) {
+    res.status(400).json({ ok: false, error: "sku_required" });
+    return;
+  }
   if (!tipoProducto) {
     res.status(400).json({ ok: false, error: "tipo_producto_required" });
+    return;
+  }
+  if (!hasRequiredWarranty(garantia)) {
+    res.status(400).json({ ok: false, error: "garantia_required" });
     return;
   }
 

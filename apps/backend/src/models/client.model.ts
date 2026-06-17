@@ -43,7 +43,41 @@ export type ClientContactRow = {
   usuario_nombre: string;
 };
 
+export type ClientQuoteSummaryRow = {
+  id: string | number;
+  id_cliente: string | number;
+  fecha_emision: string;
+  fecha_vencimiento: string | null;
+  moneda: string;
+  total_final: string;
+  estado: string;
+  proxima_alerta: string | null;
+  reactivacion_activa: number | null;
+  fecha_reactivacion_1: string | null;
+  fecha_reactivacion_2: string | null;
+  fecha_reactivacion_3: string | null;
+};
+
 type DuplicateClientResult = "duplicate_nombre_empresa" | "duplicate_cuit_tax_id" | null;
+
+function activeReactivationSql(alias: string) {
+  return `
+    coalesce(
+      case ${alias}.reactivacion_activa
+        when 1 then ${alias}.fecha_reactivacion_1
+        when 2 then ${alias}.fecha_reactivacion_2
+        when 3 then ${alias}.fecha_reactivacion_3
+        else null
+      end,
+      ${alias}.proxima_alerta,
+      (
+        select min(s.fecha_reactivacion_programada)
+        from seguimiento s
+        where s.id_cotizacion = ${alias}.id and s.fecha_reactivacion_programada is not null
+      )
+    )
+  `;
+}
 
 export async function listClients(companyId?: number | null) {
   const values: unknown[] = [];
@@ -250,6 +284,80 @@ export async function listClientContacts(clientId: number, companyId?: number | 
       where cc.id_cliente = $1
         ${companySql}
       order by cc.fecha_contacto desc, cc.id desc
+    `,
+    values
+  );
+
+  return result.rows;
+}
+
+export async function listClientQuotes(clientId: number, companyId?: number | null) {
+  const values: unknown[] = [clientId];
+  const companySql =
+    companyId !== undefined && companyId !== null
+      ? (() => {
+          values.push(companyId);
+          return `and c.id_empresa = $${values.length}`;
+        })()
+      : "";
+
+  const result = await pool.query<ClientQuoteSummaryRow>(
+    `
+      select
+        c.id,
+        c.id_cliente,
+        c.fecha_emision,
+        c.fecha_vencimiento,
+        c.moneda,
+        c.total_final,
+        c.estado,
+        ${activeReactivationSql("c")} as proxima_alerta,
+        c.reactivacion_activa,
+        c.fecha_reactivacion_1,
+        c.fecha_reactivacion_2,
+        c.fecha_reactivacion_3
+      from cotizaciones c
+      where c.id_cliente = $1
+        ${companySql}
+      order by c.fecha_emision desc, c.id desc
+    `,
+    values
+  );
+
+  return result.rows;
+}
+
+export async function listClientReactivations(clientId: number, companyId?: number | null) {
+  const values: unknown[] = [clientId];
+  const where = [
+    `c.id_cliente = $1`,
+    `c.estado not in ('CERRADA_GANADA', 'CERRADA_PERDIDA')`,
+    `${activeReactivationSql("c")} is not null`
+  ];
+
+  if (companyId !== undefined && companyId !== null) {
+    values.push(companyId);
+    where.push(`c.id_empresa = $${values.length}`);
+  }
+
+  const result = await pool.query<ClientQuoteSummaryRow>(
+    `
+      select
+        c.id,
+        c.id_cliente,
+        c.fecha_emision,
+        c.fecha_vencimiento,
+        c.moneda,
+        c.total_final,
+        c.estado,
+        ${activeReactivationSql("c")} as proxima_alerta,
+        c.reactivacion_activa,
+        c.fecha_reactivacion_1,
+        c.fecha_reactivacion_2,
+        c.fecha_reactivacion_3
+      from cotizaciones c
+      where ${where.join(" and ")}
+      order by ${activeReactivationSql("c")} asc, c.id desc
     `,
     values
   );

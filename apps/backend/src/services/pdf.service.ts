@@ -28,6 +28,23 @@ type PdfRow = {
   producto_nombre: string;
 };
 
+function formatIsoDateUtc(value: string) {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (match) {
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    return new Intl.DateTimeFormat("es-AR", { timeZone: "UTC" }).format(new Date(Date.UTC(year, month - 1, day)));
+  }
+
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return value;
+
+  return new Intl.DateTimeFormat("es-AR", { timeZone: "UTC" }).format(
+    new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()))
+  );
+}
+
 export async function generateQuotePdfBuffer(quoteId: number) {
   const result = await pool.query<PdfRow>(
     `
@@ -139,8 +156,7 @@ export async function generateQuotePdfBuffer(quoteId: number) {
   // Col 3: Quote Details
   doc.font("Helvetica").fontSize(9).fillColor(mutedColor);
   const formatDate = (iso: string) => {
-    const d = new Date(iso);
-    return Number.isFinite(d.getTime()) ? d.toLocaleDateString("es-AR") : iso;
+    return formatIsoDateUtc(iso);
   };
   
   let qy = y;

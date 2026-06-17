@@ -7,14 +7,13 @@ import { useToast } from "../../context/ToastContext";
 import { useAuth } from "../../context/AuthContext";
 import * as dashboardService from "../../services/dashboard.service";
 import * as quoteService from "../../services/quote.service";
+import { formatIsoDate } from "../../utils/date";
 import { getErrorMessage } from "../../utils/feedback";
 import { NotesWidget } from "./NotesWidget";
 import "../../styles/dashboard.css";
 
 function formatDate(iso: string | null) {
-  if (!iso) return "-";
-  const d = new Date(iso);
-  return Number.isFinite(d.getTime()) ? d.toLocaleDateString("es-AR") : iso;
+  return formatIsoDate(iso, iso ?? "-");
 }
 
 function formatKpiDelta(current: number, previous: number) {
@@ -47,6 +46,7 @@ export default function DashboardPage() {
   const [statusModalQuote, setStatusModalQuote] = useState<quoteService.QuoteReactivationAlert | null>(null);
   const [newStatus, setNewStatus] = useState("");
   const [newAlertDate, setNewAlertDate] = useState("");
+  const [newNote, setNewNote] = useState("");
 
   async function reload() {
     setLoading(true);
@@ -79,6 +79,7 @@ export default function DashboardPage() {
       });
       setStatusModalQuote(null);
       setNewAlertDate("");
+      setNewNote("");
       showToast({ type: "success", text: "Cotización actualizada correctamente" });
       void reload();
     } catch (err) {
@@ -276,7 +277,7 @@ export default function DashboardPage() {
             </div>
             <div className="modalActions">
               <Button onClick={() => setStatusModalQuote(null)} className="btn--ghost">Cancelar</Button>
-              <Button disabled={loading} onClick={() => void handleUpdateQuoteStatus()} className="btn--primary">
+              <Button disabled={loading} onClick={() => void handleUpdateStatus()} className="btn--primary">
                 Guardar
               </Button>
             </div>

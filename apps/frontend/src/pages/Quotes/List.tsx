@@ -5,6 +5,7 @@ import { ActionMenu } from "../../components/common/ActionMenu";
 import { Button } from "../../components/common/Button";
 import { useToast } from "../../context/ToastContext";
 import * as quoteService from "../../services/quote.service";
+import { extractIsoDate, formatIsoDate, getLocalTodayIsoDate } from "../../utils/date";
 import { getErrorMessage } from "../../utils/feedback";
 import "../../styles/quotes.css";
 
@@ -162,18 +163,14 @@ export default function QuotesList() {
   }
 
   function formatDate(iso: string) {
-    const d = new Date(iso);
-    return Number.isFinite(d.getTime()) ? d.toLocaleDateString("es-AR") : iso;
+    return formatIsoDate(iso, iso);
   }
 
   function formatAlert(iso: string | null) {
     if (!iso) return "-";
-    const d = new Date(iso);
-    if (!Number.isFinite(d.getTime())) return "-";
-    const now = new Date();
-    const sameDay =
-      d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
-    return sameDay ? "Hoy" : d.toLocaleDateString("es-AR");
+    const isoDate = extractIsoDate(iso);
+    if (!isoDate) return "-";
+    return isoDate === getLocalTodayIsoDate() ? "Hoy" : formatIsoDate(iso, "-");
   }
 
   function downloadCsv() {

@@ -136,6 +136,11 @@ export type QuoteDetailResult = {
     contacto_principal: string | null;
     cuit_tax_id: string | null;
     clasificacion: string | null;
+    email?: string | null;
+    telefono?: string | null;
+    direccion?: string | null;
+    provincia?: string | null;
+    pais?: string | null;
   };
 };
 

@@ -5,8 +5,10 @@ import { ConfirmDialog } from "../../components/common/ConfirmDialog";
 import { useToast } from "../../context/ToastContext";
 import * as clientService from "../../services/client.service";
 import type { Client } from "../../types";
+import { formatIsoDate } from "../../utils/date";
 import { getErrorMessage } from "../../utils/feedback";
 import "../../styles/clients.css";
+import "../../styles/quotes.css";
 
 const ReturnIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
@@ -81,6 +83,37 @@ const TrashIcon = () => (
   </svg>
 );
 
+function formatDate(iso: string | null | undefined) {
+  return formatIsoDate(iso);
+}
+
+function formatMoney(value: string, currency: string) {
+  const amount = Number(value);
+  if (!Number.isFinite(amount)) return `${currency} ${value}`;
+  return new Intl.NumberFormat("es-AR", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(amount);
+}
+
+function quoteStatusLabel(status: string) {
+  const normalized = status.toUpperCase();
+  if (normalized === "PEND_REACTIVACION") return "Pend. reactivación";
+  if (normalized === "CERRADA_GANADA") return "Cerrada ganada";
+  if (normalized === "CERRADA_PERDIDA") return "Cerrada perdida";
+  if (normalized === "ENVIADA") return "Enviada";
+  if (normalized === "POSPUESTA") return "Pospuesta";
+  if (normalized === "BORRADOR") return "Borrador";
+  if (normalized === "EMITIDA") return "Emitida";
+  return status;
+}
+
+function quoteStatusClass(status: string) {
+  return `statusPill status--${status.toLowerCase()}`;
+}
+
 
 export function ClientView() {
   const { id } = useParams();
@@ -89,7 +122,9 @@ export function ClientView() {
   const stateClient = location.state?.client as Client | undefined;
   
   const [client, setClient] = useState<Client | null>(stateClient || null);
-  const [loading, setLoading] = useState(!stateClient);
+  const [quotes, setQuotes] = useState<clientService.ClientQuoteSummary[]>([]);
+  const [reactivations, setReactivations] = useState<clientService.ClientQuoteSummary[]>([]);
+  const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -97,18 +132,18 @@ export function ClientView() {
 
   useEffect(() => {
     async function load() {
-      if (stateClient) return;
+      if (!id) {
+        setError("Cliente no encontrado");
+        setLoading(false);
+        return;
+      }
       try {
         setLoading(true);
-        // We fetch all and find by ID since the controller doesn't seem to expose a direct GET /:id? Wait, we can.
-        // Actually, let's just use listClients and filter for now to guarantee it works.
-        const all = await clientService.listClients();
-        const found = all.find(c => String(c.id) === id);
-        if (found) {
-          setClient(found);
-        } else {
-          setError("Cliente no encontrado");
-        }
+        const detail = await clientService.getClientDetail(Number(id));
+        setClient(detail.item);
+        setQuotes(detail.quotes);
+        setReactivations(detail.reactivations);
+        setError(null);
       } catch (err) {
         setError(getErrorMessage(err, {}, "Error cargando cliente"));
       } finally {
@@ -194,8 +229,46 @@ export function ClientView() {
 
             <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
               <div style={{ fontWeight: 600, marginBottom: 12, opacity: 0.8 }}>Reactivaciones</div>
-              <div className="clientCard clientCard--empty" style={{ flex: 1, minHeight: 200 }}>
-                No hay reactivaciones previstas
+              <div className="clientCard" style={{ flex: 1, minHeight: 200, padding: reactivations.length ? "16px 20px" : undefined }}>
+                {reactivations.length === 0 ? (
+                  <div className="clientCard--empty" style={{ minHeight: 160 }}>
+                    No hay reactivaciones previstas
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    {reactivations.map((quote) => (
+                      <button
+                        key={quote.id}
+                        type="button"
+                        onClick={() => navigate(`/quotes/${quote.id}`)}
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "1fr auto auto",
+                          gap: 12,
+                          alignItems: "center",
+                          width: "100%",
+                          border: "1px solid var(--border)",
+                          borderRadius: 16,
+                          background: "var(--surface)",
+                          padding: "14px 16px",
+                          cursor: "pointer",
+                          textAlign: "left"
+                        }}
+                      >
+                        <div>
+                          <div style={{ fontWeight: 700, marginBottom: 4 }}>Cotización #{quote.id}</div>
+                          <div style={{ fontSize: 13, opacity: 0.75 }}>
+                            Reactivación: {formatDate(quote.proxima_alerta)}
+                          </div>
+                        </div>
+                        <span className={quoteStatusClass(quote.estado)}>{quoteStatusLabel(quote.estado)}</span>
+                        <div style={{ fontWeight: 700, whiteSpace: "nowrap" }}>
+                          {formatMoney(quote.total_final, quote.moneda)}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -203,19 +276,73 @@ export function ClientView() {
           <div style={{ display: "flex", gap: 24 }}>
             <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
               <div style={{ fontWeight: 600, marginBottom: 12, opacity: 0.8 }}>Historial de cotizaciones</div>
-              <div className="clientCard" style={{ padding: "0", flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <div className="emptyQuotes">
-                  <FileIcon size={40} strokeWidth={1} />
-                  <p>Aún no hay cotizaciones asociadas a este cliente.</p>
-                </div>
+              <div className="clientCard" style={{ padding: quotes.length ? "12px" : "0", flex: 1, display: "flex", alignItems: "stretch", justifyContent: "center" }}>
+                {quotes.length === 0 ? (
+                  <div className="emptyQuotes">
+                    <FileIcon size={40} strokeWidth={1} />
+                    <p>Aún no hay cotizaciones asociadas a este cliente.</p>
+                  </div>
+                ) : (
+                  <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 10 }}>
+                    {quotes.map((quote) => (
+                      <button
+                        key={quote.id}
+                        type="button"
+                        onClick={() => navigate(`/quotes/${quote.id}`)}
+                        style={{
+                          width: "100%",
+                          display: "grid",
+                          gridTemplateColumns: "120px 120px 1fr auto auto",
+                          gap: 12,
+                          alignItems: "center",
+                          border: "1px solid var(--border)",
+                          borderRadius: 16,
+                          background: "var(--surface)",
+                          padding: "14px 16px",
+                          cursor: "pointer",
+                          textAlign: "left"
+                        }}
+                      >
+                        <div>
+                          <div style={{ fontSize: 12, opacity: 0.65 }}>Cotización</div>
+                          <div style={{ fontWeight: 700 }}>#{quote.id}</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 12, opacity: 0.65 }}>Emisión</div>
+                          <div style={{ fontWeight: 600 }}>{formatDate(quote.fecha_emision)}</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 12, opacity: 0.65 }}>Próxima reactivación</div>
+                          <div style={{ fontWeight: 600 }}>{formatDate(quote.proxima_alerta)}</div>
+                        </div>
+                        <span className={quoteStatusClass(quote.estado)}>{quoteStatusLabel(quote.estado)}</span>
+                        <div style={{ fontWeight: 700, whiteSpace: "nowrap" }}>
+                          {formatMoney(quote.total_final, quote.moneda)}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
             
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 64 }}>
               <div style={{ fontWeight: 600, marginBottom: 16, textAlign: "center", opacity: 0.8 }}>Acciones</div>
               <div className="viewActions">
-                <Button className="btn--icon" data-tooltip="Nueva cotización"><PlusIcon /></Button>
-                <Button className="btn--icon" data-tooltip="Editar cliente"><EditIcon /></Button>
+                <Button
+                  className="btn--icon"
+                  data-tooltip="Nueva cotización"
+                  onClick={() => navigate(`/quotes/create?clientId=${client.id}`)}
+                >
+                  <PlusIcon />
+                </Button>
+                <Button
+                  className="btn--icon"
+                  data-tooltip="Editar cliente"
+                  onClick={() => navigate(`/clients/${client.id}/edit`)}
+                >
+                  <EditIcon />
+                </Button>
                 <Button
                   className="btn--icon"
                   data-tooltip="Eliminar cliente"

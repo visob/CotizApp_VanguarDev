@@ -6,6 +6,8 @@ import {
   deleteClient,
   findDuplicateClient,
   getClientById,
+  listClientQuotes,
+  listClientReactivations,
   listClientContacts,
   listClients,
   updateClient
@@ -66,13 +68,32 @@ export async function getClientHandler(req: Request, res: Response) {
     return;
   }
 
-  const item = await getClientById(id, getScopedCompanyId(req));
+  const companyId = getScopedCompanyId(req);
+  const item = await getClientById(id, companyId);
   if (!item) {
     res.status(404).json({ ok: false, error: "not_found" });
     return;
   }
 
-  res.json({ ok: true, item: { ...item, id: Number(item.id) } });
+  const [quotes, reactivations] = await Promise.all([
+    listClientQuotes(id, companyId),
+    listClientReactivations(id, companyId)
+  ]);
+
+  res.json({
+    ok: true,
+    item: { ...item, id: Number(item.id) },
+    quotes: quotes.map((quote) => ({
+      ...quote,
+      id: Number(quote.id),
+      id_cliente: Number(quote.id_cliente)
+    })),
+    reactivations: reactivations.map((quote) => ({
+      ...quote,
+      id: Number(quote.id),
+      id_cliente: Number(quote.id_cliente)
+    }))
+  });
 }
 
 export async function createClientHandler(req: Request, res: Response) {

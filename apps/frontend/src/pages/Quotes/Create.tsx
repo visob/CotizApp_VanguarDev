@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { Button } from "../../components/common/Button";
 import { useToast } from "../../context/ToastContext";
 import { ReturnIcon } from "../../components/common/Icons";
@@ -96,6 +96,7 @@ function addDays(base: Date, days: number) {
 
 export default function QuotesCreate() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { showToast } = useToast();
 
   const [clients, setClients] = useState<Client[]>([]);
@@ -158,6 +159,12 @@ export default function QuotesCreate() {
   useEffect(() => {
     void reloadCatalog();
   }, []);
+
+  useEffect(() => {
+    const clientId = searchParams.get("clientId");
+    if (!clientId) return;
+    setIdCliente(clientId);
+  }, [searchParams]);
 
   const formaPagoOptions = useMemo(
     () => catalogOptions.filter((option) => option.tipo === "forma_pago" && option.activo),

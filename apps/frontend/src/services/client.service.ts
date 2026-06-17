@@ -1,6 +1,28 @@
 import { apiRequest } from "./apiClient";
 import type { Client, ClientContact } from "../types";
 
+export type ClientQuoteSummary = {
+  id: number;
+  id_cliente: number;
+  fecha_emision: string;
+  fecha_vencimiento: string | null;
+  moneda: string;
+  total_final: string;
+  estado: string;
+  proxima_alerta: string | null;
+  reactivacion_activa?: number | null;
+  fecha_reactivacion_1?: string | null;
+  fecha_reactivacion_2?: string | null;
+  fecha_reactivacion_3?: string | null;
+};
+
+export type ClientDetailResult = {
+  ok: true;
+  item: Client;
+  quotes: ClientQuoteSummary[];
+  reactivations: ClientQuoteSummary[];
+};
+
 export async function listClients() {
   const result = await apiRequest<{ ok: true; items: Client[] }>({ path: "/api/clients" });
   return result.items;
@@ -9,6 +31,10 @@ export async function listClients() {
 export async function getClient(id: number) {
   const result = await apiRequest<{ ok: true; item: Client }>({ path: `/api/clients/${id}` });
   return result.item;
+}
+
+export async function getClientDetail(id: number) {
+  return apiRequest<ClientDetailResult>({ path: `/api/clients/${id}` });
 }
 
 export async function createClient(input: Omit<Client, "id">) {
