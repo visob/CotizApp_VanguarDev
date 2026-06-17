@@ -58,7 +58,8 @@
 }
 
 .companyDialog {
-  width: min(820px, calc(100vw - 48px));
+  width: min(1000px, 90vw);
+  max-width: none;
   max-height: calc(100vh - 48px);
   overflow-y: auto;
 }

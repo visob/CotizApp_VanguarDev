@@ -1,6 +1,14 @@
+import fs from "node:fs";
+import path from "node:path";
 import PDFDocument from "pdfkit";
 import { pool } from "../config/database.js";
 import { centsToMoneyString, parseMoneyToCents } from "./quote.service.js";
+
+function getLocalFilePath(publicPath: string | null) {
+  if (!publicPath || !publicPath.startsWith("/uploads/")) return null;
+  const relativePath = publicPath.replace(/^\/uploads[\\/]/, "");
+  return path.resolve(process.cwd(), "uploads", relativePath);
+}
 
 type PdfRow = {
   id: string | number;
@@ -21,11 +29,24 @@ type PdfRow = {
   cliente_nombre_empresa: string;
   cliente_contacto_principal: string | null;
   cliente_cuit_tax_id: string | null;
+  cliente_email: string | null;
+  cliente_telefono: string | null;
   usuario_nombre: string;
   usuario_email: string;
   item_cantidad: number;
   item_precio_unitario_momento: string;
+  producto_id: string | number;
   producto_nombre: string;
+  empresa_nombre: string;
+  empresa_logo_url: string | null;
+  empresa_direccion: string | null;
+  empresa_provincia: string | null;
+  empresa_pais: string | null;
+  empresa_codigo_postal: string | null;
+  empresa_email: string | null;
+  empresa_telefono_contacto: string | null;
+  empresa_website_url: string | null;
+  empresa_footer_text: string | null;
 };
 
 function formatIsoDateUtc(value: unknown) {
@@ -70,16 +91,30 @@ export async function generateQuotePdfBuffer(quoteId: number) {
         cl.nombre_empresa as cliente_nombre_empresa,
         cl.contacto_principal as cliente_contacto_principal,
         cl.cuit_tax_id as cliente_cuit_tax_id,
+        cl.email as cliente_email,
+        cl.telefono as cliente_telefono,
         u.nombre as usuario_nombre,
         u.email as usuario_email,
         i.cantidad as item_cantidad,
         i.precio_unitario_momento as item_precio_unitario_momento,
-        p.nombre as producto_nombre
+        p.id as producto_id,
+        p.nombre as producto_nombre,
+        e.nombre as empresa_nombre,
+        e.logo_url as empresa_logo_url,
+        e.direccion as empresa_direccion,
+        e.provincia as empresa_provincia,
+        e.pais as empresa_pais,
+        e.codigo_postal as empresa_codigo_postal,
+        e.email as empresa_email,
+        e.telefono_contacto as empresa_telefono_contacto,
+        e.website_url as empresa_website_url,
+        e.footer_text as empresa_footer_text
       from cotizaciones c
       join clientes cl on cl.id = c.id_cliente
       join usuarios u on u.id = c.id_usuario
       join items_cotizacion i on i.id_cotizacion = c.id
       join productos p on p.id = i.id_producto
+      left join empresas e on e.id = c.id_empresa
       where c.id = $1
       order by i.id asc
     `,
@@ -124,9 +159,17 @@ export async function generateQuotePdfBuffer(quoteId: number) {
   // 1. Header
   const headerY = 48;
   
-  // Top Left: Seller Info (Business Name)
-  doc.font("Helvetica-Bold").fontSize(12).fillColor(primaryColor).text(header.usuario_nombre, startX, headerY);
-  doc.font("Helvetica").fontSize(10).fillColor(mutedColor).text(header.usuario_email, startX, headerY + 14);
+  // Top Left: Company Logo or Name
+  const localLogoPath = getLocalFilePath(header.empresa_logo_url);
+  if (localLogoPath && fs.existsSync(localLogoPath)) {
+    try {
+      doc.image(localLogoPath, startX, headerY, { fit: [250, 60] });
+    } catch {
+      doc.font("Helvetica-Bold").fontSize(16).fillColor(primaryColor).text(header.empresa_nombre, startX, headerY);
+    }
+  } else {
+    doc.font("Helvetica-Bold").fontSize(16).fillColor(primaryColor).text(header.empresa_nombre, startX, headerY);
+  }
 
   // Top Right: Title and ID
   doc.font("Helvetica-Bold").fontSize(28).fillColor(primaryColor).text("Cotización", startX, headerY, { width: contentWidth, align: "right" });
@@ -141,13 +184,31 @@ export async function generateQuotePdfBuffer(quoteId: number) {
   const col2X = startX + 160;
   const col3X = startX + 310;
 
-  // Col 1: Cliente
-  doc.font("Helvetica-Bold").fontSize(9).fillColor(primaryColor).text("Cliente:", col1X, y);
+  // Facturar a (Client)
+  let cy = y;
+  doc.font("Helvetica-Bold").fontSize(9).fillColor(primaryColor).text("Facturar a:", startX, cy);
   doc.font("Helvetica").fontSize(9).fillColor(mutedColor);
-  let cy = y + 14;
-  doc.text(header.cliente_nombre_empresa, col1X, cy); cy += 12;
-  if (header.cliente_contacto_principal) { doc.text(`Contacto: ${header.cliente_contacto_principal}`, col1X, cy); cy += 12; }
-  if (header.cliente_cuit_tax_id) { doc.text(`CUIT: ${header.cliente_cuit_tax_id}`, col1X, cy); cy += 12; }
+  
+  let clientY = cy + 14;
+  doc.text(header.cliente_nombre_empresa, startX, clientY);
+  clientY += 12;
+  
+  if (header.cliente_cuit_tax_id) {
+    doc.text(`CUIT: ${header.cliente_cuit_tax_id}`, startX, clientY);
+    clientY += 12;
+  }
+  if (header.cliente_contacto_principal) {
+    doc.text(`Atn: ${header.cliente_contacto_principal}`, startX, clientY);
+    clientY += 12;
+  }
+  if (header.cliente_email) {
+    doc.text(header.cliente_email, startX, clientY);
+    clientY += 12;
+  }
+  if (header.cliente_telefono) {
+    doc.text(`Tel: ${header.cliente_telefono}`, startX, clientY);
+    clientY += 12;
+  }
 
   // Col 2: Vendedor
   doc.font("Helvetica-Bold").fontSize(9).fillColor(primaryColor).text("Vendedor:", col2X, y);
@@ -180,35 +241,49 @@ export async function generateQuotePdfBuffer(quoteId: number) {
 
   drawDetail("Fecha", formatDate(header.fecha_emision));
   drawDetail("Vencimiento", header.fecha_vencimiento ? formatDate(header.fecha_vencimiento) : "-");
-  drawDetail("Moneda", "ARS y USD");
-  drawDetail("Tasa de cambio", `1 USD = ${Number(header.tipo_cambio).toFixed(6)} ARS`);
-  drawDetail("Estado", mapEstado(header.estado));
 
-  y = Math.max(cy, vy, qy) + 16;
+  y = Math.max(clientY, vy, qy) + 16;
   drawDivider(y);
   y += 24;
 
   // 3. Items Section
-  doc.font("Helvetica-Bold").fontSize(10).fillColor(primaryColor).text("Cargos", startX, y);
+  drawDivider(y, "#f0f0f0");
+  y += 8;
+  
+  doc.font("Helvetica-Bold").fontSize(9).fillColor(primaryColor);
+  doc.text("Cant.", startX, y, { width: 40, align: "center" });
+  doc.text("Código", startX + 40, y, { width: 60, align: "center" });
+  doc.text("Descripción", startX + 100, y, { width: 220, align: "left" });
+  doc.text("P. Unitario", startX + 320, y, { width: 80, align: "right" });
+  doc.text("Importe", startX + 400, y, { width: 100, align: "right" });
+
   y += 16;
   drawDivider(y, "#f0f0f0");
-  y += 16;
+  y += 12;
 
+  doc.font("Helvetica").fontSize(9);
   for (const r of rows) {
     const unitCents = parseMoneyToCents(r.item_precio_unitario_momento) ?? 0n;
     const grossLineCents = unitCents * BigInt(r.item_cantidad);
     const lineTotal = centsToMoneyString(grossLineCents);
     const desc = r.producto_nombre;
+    const code = String(r.producto_id).padStart(4, "0");
     
-    doc.font("Helvetica").fontSize(9).fillColor(mutedColor);
-    doc.text(`${desc} (x${r.item_cantidad} @ $${centsToMoneyString(unitCents)})`, startX, y);
-    doc.fillColor(primaryColor).text(`$${lineTotal} ${header.moneda}`, startX, y, { width: contentWidth, align: "right" });
+    doc.fillColor(mutedColor);
+    doc.text(String(r.item_cantidad), startX, y, { width: 40, align: "center" });
+    doc.text(code, startX + 40, y, { width: 60, align: "center" });
+    doc.text(desc, startX + 100, y, { width: 220, align: "left" });
+    doc.text(`$${centsToMoneyString(unitCents)}`, startX + 320, y, { width: 80, align: "right" });
     
-    y += 16;
+    doc.font("Helvetica-Bold").fillColor(primaryColor);
+    doc.text(`$${lineTotal}`, startX + 400, y, { width: 100, align: "right" });
+    doc.font("Helvetica"); // reset font for next item
+    
+    y += 20;
     drawDivider(y, "#f0f0f0");
-    y += 16;
+    y += 12;
 
-    if (y > 700) {
+    if (y > 600) {
       doc.addPage();
       y = doc.y;
     }
@@ -245,44 +320,63 @@ export async function generateQuotePdfBuffer(quoteId: number) {
   y += 16;
   drawTotalLine("Total", `$${centsToMoneyString(totalFinalCents)} ${header.moneda}`, true);
 
-  // Alternate Currency Total
-  const tc = Number(header.tipo_cambio) || 1;
-  const altCurrency = header.moneda === "USD" ? "ARS" : "USD";
-  const amount = Number(totalFinalCents) / 100;
-  const altAmount = header.moneda === "USD" ? amount * tc : amount / tc;
-  
-  // Draw alternate total slightly muted
-  doc.font("Helvetica").fontSize(9).fillColor(mutedColor);
-  doc.text(`Total en ${altCurrency}`, totalsX, y);
-  doc.text(`$${altAmount.toFixed(2)} ${altCurrency}`, totalsX, y, { width: totalsW, align: "right" });
-  y += 16;
+
 
   // 5. Footer (Delivery & Payment Terms)
-  // Positioned fixed near the bottom unless content pushed it down.
-  const footerY = Math.max(y + 40, 720);
-  
-  if (footerY > 750) {
-    doc.addPage();
-  }
-
-  const actFooterY = doc.y > 720 && footerY > 750 ? doc.y + 40 : footerY;
+  const actFooterY = Math.max(y + 40, 650);
 
   drawDivider(actFooterY, lightLine);
   
+  const colWidth = contentWidth / 3;
+
   // Col 1: Plazo de entrega
-  doc.font("Helvetica-Bold").fontSize(9).fillColor(primaryColor).text("Plazo de entrega:", startX, actFooterY + 16);
+  doc.font("Helvetica-Bold").fontSize(9).fillColor(primaryColor).text("Plazo de entrega:", startX, actFooterY + 16, { width: colWidth, align: "center" });
   const plazoText = header.plazo_entrega || "-";
-  doc.font("Helvetica").fillColor(mutedColor).text(plazoText, startX, actFooterY + 28, { width: 140 });
+  doc.font("Helvetica").fillColor(mutedColor).text(plazoText, startX, actFooterY + 28, { width: colWidth, align: "center" });
 
   // Col 2: Método de pago
-  doc.font("Helvetica-Bold").fillColor(primaryColor).text("Método de pago:", startX + 160, actFooterY + 16);
+  doc.font("Helvetica-Bold").fillColor(primaryColor).text("Método de pago:", startX + colWidth, actFooterY + 16, { width: colWidth, align: "center" });
   const pagoText = header.forma_pago || "-";
-  doc.font("Helvetica").fillColor(mutedColor).text(pagoText, startX + 160, actFooterY + 28, { width: 160 });
+  doc.font("Helvetica").fillColor(mutedColor).text(pagoText, startX + colWidth, actFooterY + 28, { width: colWidth, align: "center" });
 
   // Col 3: Lugar de entrega
-  doc.font("Helvetica-Bold").fillColor(primaryColor).text("Lugar de entrega:", startX + 340, actFooterY + 16);
+  doc.font("Helvetica-Bold").fillColor(primaryColor).text("Lugar de entrega:", startX + colWidth * 2, actFooterY + 16, { width: colWidth, align: "center" });
   const lugarText = header.lugar_entrega || "-";
-  doc.font("Helvetica").fillColor(mutedColor).text(lugarText, startX + 340, actFooterY + 28, { width: 160 });
+  doc.font("Helvetica").fillColor(mutedColor).text(lugarText, startX + colWidth * 2, actFooterY + 28, { width: colWidth, align: "center" });
+
+  // Divider below delivery terms
+  drawDivider(actFooterY + 50, lightLine);
+
+  // Company Footer details
+  const addressY = Math.max(actFooterY + 65, 735);
+  const contactY = addressY + 20;
+  const footerTextY = contactY + 20;
+
+  const fullAddressParts = [];
+  if (header.empresa_direccion) fullAddressParts.push(header.empresa_direccion);
+  if (header.empresa_codigo_postal) fullAddressParts.push(header.empresa_codigo_postal);
+  if (header.empresa_provincia) fullAddressParts.push(header.empresa_provincia);
+  if (header.empresa_pais) fullAddressParts.push(header.empresa_pais);
+
+  if (header.empresa_direccion) {
+    doc.font("Helvetica").fontSize(9).fillColor(primaryColor);
+    doc.text(fullAddressParts.join(", "), startX, addressY, { width: contentWidth, align: "center" });
+  }
+
+  const footerParts = [];
+  if (header.empresa_telefono_contacto) footerParts.push(header.empresa_telefono_contacto);
+  if (header.empresa_email) footerParts.push(header.empresa_email);
+  if (header.empresa_website_url) footerParts.push(header.empresa_website_url);
+
+  if (footerParts.length > 0) {
+    doc.font("Helvetica").fontSize(9).fillColor(mutedColor);
+    doc.text(footerParts.join("  |  "), startX, contactY, { width: contentWidth, align: "center" });
+  }
+
+  if (header.empresa_footer_text) {
+    doc.font("Helvetica-Oblique").fontSize(8).fillColor(mutedColor);
+    doc.text(header.empresa_footer_text, startX, footerTextY, { width: contentWidth, align: "center" });
+  }
 
   doc.end();
   return endPromise;

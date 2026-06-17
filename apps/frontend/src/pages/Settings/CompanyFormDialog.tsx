@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import { Button } from "../../components/common/Button";
 
 export type CompanyDraft = {
@@ -50,7 +51,7 @@ export function CompanyFormDialog(props: {
 }) {
   if (!props.open) return null;
 
-  return (
+  return createPortal(
     <div className="modalOverlay" onClick={() => (props.saving ? null : props.onClose())}>
       <div className="modalContent companyDialog" onClick={(event) => event.stopPropagation()}>
         <h3>{props.title}</h3>
@@ -161,6 +162,7 @@ export function CompanyFormDialog(props: {
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
