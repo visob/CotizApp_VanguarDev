@@ -57,6 +57,12 @@ function parseActiveReactivationSlot(value: unknown): 1 | 2 | 3 | null {
   return null;
 }
 
+type QuoteItemRequest = {
+  id_producto?: unknown;
+  cantidad?: unknown;
+  iva_porcentaje?: unknown;
+};
+
 const allowedEstados = new Set([
   "BORRADOR",
   "EMITIDA",
@@ -159,13 +165,13 @@ export async function createQuoteHandler(req: Request, res: Response) {
   const reactivationDates = [fechaReactivacion1Iso, fechaReactivacion2Iso, fechaReactivacion3Iso] as const;
   const activeReactivationDate = reactivationDates[reactivacionActiva - 1] ?? proximaAlertaIso ?? null;
 
-  const items = Array.isArray(req.body?.items) ? (req.body.items as unknown[]) : [];
-  const itemsWithProduct = items.filter((it) => parseNumericId((it as any)?.id_producto));
+  const items = Array.isArray(req.body?.items) ? (req.body.items as QuoteItemRequest[]) : [];
+  const itemsWithProduct = items.filter((item) => parseNumericId(item.id_producto));
   const parsedItems = items
-    .map((it) => {
-      const idProducto = parseNumericId((it as any)?.id_producto);
-      const cantidad = parseQty((it as any)?.cantidad);
-      const ivaValue = typeof (it as any)?.iva_porcentaje === "string" ? (it as any).iva_porcentaje.trim() : "";
+    .map((item) => {
+      const idProducto = parseNumericId(item.id_producto);
+      const cantidad = parseQty(item.cantidad);
+      const ivaValue = typeof item.iva_porcentaje === "string" ? item.iva_porcentaje.trim() : "";
       return idProducto && cantidad && ivaValue ? { idProducto, cantidad, ivaValue } : null;
     })
     .filter((x): x is { idProducto: number; cantidad: number; ivaValue: string } => x !== null);
@@ -206,6 +212,10 @@ export async function createQuoteHandler(req: Request, res: Response) {
     res.status(400).json({ ok: false, error: "cliente_invalido" });
     return;
   }
+  if (client.estado.trim().toLowerCase() !== "activo") {
+    res.status(400).json({ ok: false, error: "cliente_inactivo" });
+    return;
+  }
 
   const linesForTotals: Array<{ grossSubtotalCents: bigint; ivaBasisPoints: bigint }> = [];
   const itemsToInsert: Array<{
@@ -224,6 +234,10 @@ export async function createQuoteHandler(req: Request, res: Response) {
     const product = await getProductById(it.idProducto, companyId);
     if (!product) {
       res.status(400).json({ ok: false, error: "producto_invalido" });
+      return;
+    }
+    if (product.estado.trim().toLowerCase() !== "activo") {
+      res.status(400).json({ ok: false, error: "producto_inactivo" });
       return;
     }
 
@@ -364,6 +378,10 @@ export async function getQuoteHandler(req: Request, res: Response) {
 
   const items = await listQuoteItems(id, companyId);
   const client = await getClientById(Number(quote.id_cliente), companyId);
+  if (!client) {
+    res.status(404).json({ ok: false, error: "client_not_found" });
+    return;
+  }
 
   res.json({ ok: true, quote, items, client });
 }
@@ -398,9 +416,11 @@ export async function updateQuoteHandler(req: Request, res: Response) {
     }
   }
 
-  const nextActiveSlot = parseActiveReactivationSlot(req.body?.reactivacion_activa) ?? (current.reactivacion_activa as 1 | 2 | 3) ?? 1;
+  const currentActiveSlot = parseActiveReactivationSlot(current.reactivacion_activa) ?? 1;
+  const requestedActiveSlot = parseActiveReactivationSlot(req.body?.reactivacion_activa);
+  const nextActiveSlot = requestedActiveSlot ?? currentActiveSlot;
   if (req.body?.reactivacion_activa !== undefined) {
-    if (!parseActiveReactivationSlot(req.body?.reactivacion_activa)) {
+    if (!requestedActiveSlot) {
       res.status(400).json({ ok: false, error: "reactivacion_activa_invalida" });
       return;
     }

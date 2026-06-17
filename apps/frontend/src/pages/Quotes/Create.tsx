@@ -91,6 +91,21 @@ function formatDateInput(date: Date) {
   return `${yyyy}-${mm}-${dd}`;
 }
 
+function parseDateInputValue(value: string) {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(year, month - 1, day, 0, 0, 0, 0);
+  return Number.isFinite(date.getTime()) ? date : null;
+}
+
+function isActiveRecord(status: string | null | undefined) {
+  return (status ?? "").trim().toLocaleLowerCase("es-AR") === "activo";
+}
+
 function addDays(base: Date, days: number) {
   const next = new Date(base);
   next.setDate(next.getDate() + days);
@@ -143,6 +158,17 @@ export default function QuotesCreate() {
   const [lugarEntrega, setLugarEntrega] = useState("");
   const [descuentoPorcentajeGlobal, setDescuentoPorcentajeGlobal] = useState("0");
 
+  const quoteErrorMessages: Record<string, string> = {
+    cliente_invalido: "Seleccioná un cliente válido.",
+    cliente_inactivo: "El cliente seleccionado no está activo.",
+    producto_invalido: "Uno de los productos seleccionados no es válido.",
+    producto_inactivo: "Uno de los productos seleccionados no está activo.",
+    items_requeridos: "Agregá al menos un producto con cantidad válida.",
+    tipo_iva_requerido: "Todos los productos deben tener un tipo de IVA válido.",
+    tipo_iva_invalido: "Uno de los tipos de IVA seleccionados no es válido.",
+    precio_producto_invalido: "Uno de los productos seleccionados no tiene un precio válido."
+  };
+
   async function reloadCatalog() {
     setLoading(true);
     setError(null);
@@ -177,7 +203,10 @@ export default function QuotesCreate() {
   }
 
   const sortedClients = useMemo(
-    () => [...clients].sort((a, b) => a.nombre_empresa.localeCompare(b.nombre_empresa, "es-AR")),
+    () =>
+      [...clients]
+        .filter((client) => isActiveRecord(client.estado))
+        .sort((a, b) => a.nombre_empresa.localeCompare(b.nombre_empresa, "es-AR")),
     [clients]
   );
 
@@ -193,7 +222,10 @@ export default function QuotesCreate() {
   }, [clientQuery, sortedClients]);
 
   const sortedProducts = useMemo(
-    () => [...products].sort((a, b) => a.nombre.localeCompare(b.nombre, "es-AR")),
+    () =>
+      [...products]
+        .filter((product) => isActiveRecord(product.estado))
+        .sort((a, b) => a.nombre.localeCompare(b.nombre, "es-AR")),
     [products]
   );
 
@@ -334,10 +366,31 @@ export default function QuotesCreate() {
     [descuentoPorcentajeGlobal]
   );
   const isDiscountValid = discountBpInput !== null && discountBpInput >= 0n && discountBpInput <= 10000n;
+  const moneyPrefix = moneda === "USD" ? "USD " : "$";
+
+  function formatSelectedMoney(cents: bigint) {
+    return `${moneyPrefix}${centsToMoneyString(cents)}`;
+  }
+
+  function getReactivationCountdownLabel(value: string) {
+    const targetDate = parseDateInputValue(value);
+    if (!targetDate) return "";
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const diffMs = targetDate.getTime() - today.getTime();
+    const diffDays = Math.round(diffMs / 86400000);
+
+    if (diffDays === 0) return "La reactivacion es hoy.";
+    if (diffDays === 1) return "Falta 1 dia para la reactivacion.";
+    if (diffDays > 1) return `Faltan ${diffDays} dias para la reactivacion.`;
+    if (diffDays === -1) return "La fecha fue ayer.";
+    return `La fecha fue hace ${Math.abs(diffDays)} dias.`;
+  }
 
   const selectedClient = useMemo(
-    () => clients.find((client) => String(client.id) === idCliente) ?? null,
-    [clients, idCliente]
+    () => sortedClients.find((client) => String(client.id) === idCliente) ?? null,
+    [sortedClients, idCliente]
   );
 
   function handleClientQueryChange(value: string) {
@@ -351,7 +404,7 @@ export default function QuotesCreate() {
       return;
     }
 
-    const exactMatches = clients.filter(
+    const exactMatches = sortedClients.filter(
       (client) => normalizeSearchText(client.nombre_empresa) === normalized
     );
 
@@ -376,7 +429,7 @@ export default function QuotesCreate() {
     setItems((prev) => {
       const normalized = normalizeSearchText(value);
       const exactMatches = normalized
-        ? products.filter((product) => normalizeSearchText(product.nombre) === normalized)
+        ? sortedProducts.filter((product) => normalizeSearchText(product.nombre) === normalized)
         : [];
 
       return prev.map((item, itemIndex) => {
@@ -402,7 +455,7 @@ export default function QuotesCreate() {
           };
         }
 
-        const selectedProduct = products.find((product) => String(product.id) === item.id_producto) ?? null;
+        const selectedProduct = sortedProducts.find((product) => String(product.id) === item.id_producto) ?? null;
         const keepCurrentSelection =
           selectedProduct && normalizeSearchText(selectedProduct.nombre) === normalized;
 
@@ -614,7 +667,7 @@ export default function QuotesCreate() {
       showToast({ type: "success", text: "Borrador guardado correctamente" });
       navigate("/quotes");
     } catch (err) {
-      setError(getErrorMessage(err, {}, "No se pudo guardar el borrador"));
+      setError(getErrorMessage(err, quoteErrorMessages, "No se pudo guardar el borrador"));
       setSaving(false);
     }
   }
@@ -665,7 +718,7 @@ export default function QuotesCreate() {
       showToast({ type: "success", text: "Cotización generada correctamente" });
       navigate("/quotes");
     } catch (err) {
-      setError(getErrorMessage(err, {}, "No se pudo generar la cotización"));
+      setError(getErrorMessage(err, quoteErrorMessages, "No se pudo generar la cotización"));
       setSaving(false);
     }
   }
@@ -913,24 +966,24 @@ export default function QuotesCreate() {
               <div className="stack">
                 <div className="summaryRow">
                   <span className="hint">Subtotal (antes de descuento):</span>
-                  <span className="summaryValue">${centsToMoneyString(preview.subtotalAntesDescuentoCents)}</span>
+                  <span className="summaryValue">{formatSelectedMoney(preview.subtotalAntesDescuentoCents)}</span>
                 </div>
                 <div className="summaryRow">
                   <span className="hint">Descuento global ({descuentoPorcentajeGlobal}%):</span>
-                  <span className="summaryValue">-${centsToMoneyString(preview.descuentoCents)}</span>
+                  <span className="summaryValue">-{formatSelectedMoney(preview.descuentoCents)}</span>
                 </div>
                 <div className="summaryRow">
                   <span className="hint">Subtotal (sin impuestos):</span>
-                  <span className="summaryValue">${centsToMoneyString(preview.subtotalSinImpuestosCents)}</span>
+                  <span className="summaryValue">{formatSelectedMoney(preview.subtotalSinImpuestosCents)}</span>
                 </div>
                 <div className="summaryRow">
-                  <span className="hint">Impuestos:</span>
-                  <span className="summaryValue">${centsToMoneyString(preview.impuestosCents)}</span>
+                  <span className="hint">Impuestos ({moneda}):</span>
+                  <span className="summaryValue">{formatSelectedMoney(preview.impuestosCents)}</span>
                 </div>
                 <div className="divider" />
                 <div className="summaryRow">
-                  <span className="summaryTotalLabel">Total:</span>
-                  <span className="summaryTotalValue">${centsToMoneyString(preview.subtotalConImpuestosCents)}</span>
+                  <span className="summaryTotalLabel">Total ({moneda}):</span>
+                  <span className="summaryTotalValue">{formatSelectedMoney(preview.subtotalConImpuestosCents)}</span>
                 </div>
               </div>
             </div>
@@ -981,14 +1034,17 @@ export default function QuotesCreate() {
             <label className="field">
               <span className="label">Fecha de reactivación 1</span>
               <input type="date" value={fechaReactivacion1} onChange={(e) => setFechaReactivacion1(e.target.value)} className="input" />
+              {fechaReactivacion1 ? <span className="hint">{getReactivationCountdownLabel(fechaReactivacion1)}</span> : null}
             </label>
             <label className="field">
               <span className="label">Fecha de reactivación 2</span>
               <input type="date" value={fechaReactivacion2} onChange={(e) => setFechaReactivacion2(e.target.value)} className="input" />
+              {fechaReactivacion2 ? <span className="hint">{getReactivationCountdownLabel(fechaReactivacion2)}</span> : null}
             </label>
             <label className="field">
               <span className="label">Fecha de reactivación 3</span>
               <input type="date" value={fechaReactivacion3} onChange={(e) => setFechaReactivacion3(e.target.value)} className="input" />
+              {fechaReactivacion3 ? <span className="hint">{getReactivationCountdownLabel(fechaReactivacion3)}</span> : null}
             </label>
             <label className="field">
               <span className="label">Reactivación activa</span>
@@ -997,6 +1053,9 @@ export default function QuotesCreate() {
                 <option value={2}>Fecha 2</option>
                 <option value={3}>Fecha 3</option>
               </select>
+              <span className="hint" style={{ visibility: "hidden" }}>
+                Placeholder de alineacion
+              </span>
             </label>
           </div>
 
