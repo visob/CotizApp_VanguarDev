@@ -32,7 +32,7 @@ export async function listTrackingEvents(req: Request, res: Response) {
       actionType: "CREACION",
       actionAtIso: quote.fecha_emision ?? new Date().toISOString(),
       note: null,
-      metadata: { estado: quote.estado }
+      metadata: { estado: quote.estado, tipo_cambio: quote.tipo_cambio, moneda: quote.moneda }
     });
     items = await listQuoteTrackingEvents(quoteId, companyId);
   }

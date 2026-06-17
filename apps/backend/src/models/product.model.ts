@@ -177,6 +177,13 @@ export async function updateProduct(id: number, input: ProductInput, companyId?:
   return result.rows[0] ?? null;
 }
 
+export async function recalcPrecioArsForCompany(companyId: number, exchangeRate: number) {
+  await pool.query(
+    `update productos set precio_ars = round((precio_usd::numeric * $2)::numeric, 2)::text where id_empresa = $1`,
+    [companyId, exchangeRate]
+  );
+}
+
 export async function deleteProduct(id: number, companyId?: number | null) {
   const values: unknown[] = [id];
   const companySql =

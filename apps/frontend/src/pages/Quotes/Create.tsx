@@ -211,6 +211,7 @@ export default function QuotesCreate() {
   const [formaPago, setFormaPago] = useState("");
   const [lugarEntrega, setLugarEntrega] = useState("");
   const [descuentoPorcentajeGlobal, setDescuentoPorcentajeGlobal] = useState("0");
+  const [exchangeRate, setExchangeRate] = useState("1000");
 
   const quoteErrorMessages: Record<string, string> = {
     cliente_invalido: "Seleccioná un cliente válido.",
@@ -245,6 +246,19 @@ export default function QuotesCreate() {
 
   useEffect(() => {
     void reloadCatalog();
+  }, []);
+
+  useEffect(() => {
+    async function fetchRate() {
+      const rateConfig = await configService.getConfig("exchange_rate");
+      if (rateConfig) {
+        const rate = parseFloat(rateConfig.valor);
+        if (!isNaN(rate) && rate > 0) {
+          setExchangeRate(rateConfig.valor);
+        }
+      }
+    }
+    void fetchRate();
   }, []);
 
   useEffect(() => {
@@ -864,7 +878,7 @@ export default function QuotesCreate() {
         fecha_reactivacion_3: fechaReactivacion3 ? `${fechaReactivacion3}T00:00:00.000Z` : undefined,
         reactivacion_activa: reactivacionActiva,
         descuento_porcentaje_global: normalizePercentInput(descuentoPorcentajeGlobal),
-        tipo_cambio: moneda === "ARS" ? "1" : "1",
+        tipo_cambio: moneda === "ARS" ? exchangeRate : "1",
         notas,
         plazo_entrega: plazoEntrega,
         forma_pago: formaPago,
@@ -926,7 +940,7 @@ export default function QuotesCreate() {
         fecha_reactivacion_3: fechaReactivacion3 ? `${fechaReactivacion3}T00:00:00.000Z` : undefined,
         reactivacion_activa: reactivacionActiva,
         descuento_porcentaje_global: normalizePercentInput(descuentoPorcentajeGlobal),
-        tipo_cambio: moneda === "ARS" ? "1" : "1",
+        tipo_cambio: moneda === "ARS" ? exchangeRate : "1",
         notas,
         plazo_entrega: plazoEntrega,
         forma_pago: formaPago,

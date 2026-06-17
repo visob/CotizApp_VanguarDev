@@ -6,6 +6,10 @@ jest.mock("../models/config.model.js", () => ({
   setConfig: jest.fn()
 }));
 
+jest.mock("../models/product.model.js", () => ({
+  recalcPrecioArsForCompany: jest.fn()
+}));
+
 jest.mock("../utils/access.js", () => ({
   canManageUsers: jest.fn()
 }));
@@ -15,6 +19,7 @@ jest.mock("../utils/request-scope.js", () => ({
 }));
 
 import * as configModel from "../models/config.model.js";
+import * as productModel from "../models/product.model.js";
 import * as access from "../utils/access.js";
 import * as requestScope from "../utils/request-scope.js";
 
@@ -95,6 +100,31 @@ describe("config.routes", () => {
       expect(configModel.listCatalogOptions).toHaveBeenCalledWith(
         expect.objectContaining({ tipo: undefined })
       );
+    });
+
+    it("recalls productos when clave is exchange_rate", async () => {
+      (configModel.setConfig as MFn).mockResolvedValue({ clave: "exchange_rate", valor: "1200" });
+      (productModel.recalcPrecioArsForCompany as MFn).mockResolvedValue(undefined);
+      const handler = getHandler("/:clave", "put");
+      const res = mockRes();
+      await handler({ params: { clave: "exchange_rate" }, body: { valor: "1200" } }, res);
+      expect(configModel.setConfig).toHaveBeenCalledWith(1, "exchange_rate", "1200");
+      expect(productModel.recalcPrecioArsForCompany).toHaveBeenCalledWith(1, 1200);
+      expect(res.json).toHaveBeenCalledWith({ clave: "exchange_rate", valor: "1200" });
+    });
+
+    it("returns 400 when exchange_rate value is invalid", async () => {
+      const handler = getHandler("/:clave", "put");
+      const res = mockRes();
+      await handler({ params: { clave: "exchange_rate" }, body: { valor: "abc" } }, res);
+      expect(res.status).toHaveBeenCalledWith(400);
+    });
+
+    it("returns 400 when exchange_rate is negative", async () => {
+      const handler = getHandler("/:clave", "put");
+      const res = mockRes();
+      await handler({ params: { clave: "exchange_rate" }, body: { valor: "-5" } }, res);
+      expect(res.status).toHaveBeenCalledWith(400);
     });
 
     it("catches errors and returns 500", async () => {

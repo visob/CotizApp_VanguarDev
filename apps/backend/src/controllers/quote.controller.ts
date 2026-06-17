@@ -310,7 +310,7 @@ export async function createQuoteHandler(req: Request, res: Response) {
     actionType: "CREACION",
     actionAtIso: new Date().toISOString(),
     note: null,
-    metadata: { estado }
+    metadata: { estado, tipo_cambio: tipoCambio, moneda }
   });
 
   if (returnPdf) {

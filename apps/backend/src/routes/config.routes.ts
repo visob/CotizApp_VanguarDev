@@ -1,6 +1,7 @@
 import { Router } from "express";
 import type { Request, Response } from "express";
 import * as configModel from "../models/config.model.js";
+import * as productModel from "../models/product.model.js";
 import { canManageUsers } from "../utils/access.js";
 import { getScopedCompanyId } from "../utils/request-scope.js";
 
@@ -242,8 +243,18 @@ configRouter.put("/:clave", async (req, res) => {
     if (valor === undefined) {
       return res.status(400).json({ error: "Se requiere un valor" });
     }
+
+    const rate = parseFloat(String(valor));
+    if (clave === "exchange_rate" && (isNaN(rate) || rate <= 0)) {
+      return res.status(400).json({ error: "La tasa de cambio debe ser un número positivo" });
+    }
     
     const item = await configModel.setConfig(companyId, clave, String(valor));
+
+    if (clave === "exchange_rate") {
+      await productModel.recalcPrecioArsForCompany(companyId, rate);
+    }
+
     res.json(item);
   } catch (error) {
     console.error("PUT /config error:", error);

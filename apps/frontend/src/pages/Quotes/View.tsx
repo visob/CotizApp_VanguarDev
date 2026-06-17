@@ -27,10 +27,14 @@ function extractEstadoChange(metadata: unknown): { from: string; to: string } | 
   return from && to ? { from, to } : null;
 }
 
-function extractCreationEstado(metadata: unknown): string | null {
-  if (!metadata || typeof metadata !== "object") return null;
+function extractCreationMetadata(metadata: unknown) {
+  if (!metadata || typeof metadata !== "object") return { estado: null, tipo_cambio: null, moneda: null };
   const m = metadata as Record<string, unknown>;
-  return typeof m.estado === "string" ? m.estado : null;
+  return {
+    estado: typeof m.estado === "string" ? m.estado : null,
+    tipo_cambio: typeof m.tipo_cambio === "string" || typeof m.tipo_cambio === "number" ? String(m.tipo_cambio) : null,
+    moneda: typeof m.moneda === "string" ? m.moneda : null
+  };
 }
 
 function extractNoteKey(metadata: unknown, fallbackId: number) {
@@ -430,7 +434,7 @@ export default function QuotesView() {
                               ? "Creación"
                               : ev.tipo_accion;
                       const estadoChange = ev.tipo_accion === "CAMBIO_ESTADO" ? extractEstadoChange(ev.metadata) : null;
-                      const createdEstado = ev.tipo_accion === "CREACION" ? extractCreationEstado(ev.metadata) : null;
+                      const creationMeta = ev.tipo_accion === "CREACION" ? extractCreationMetadata(ev.metadata) : null;
 
                       return (
                         <div key={ev.id} className="card" style={{ padding: 14 }}>
@@ -443,7 +447,10 @@ export default function QuotesView() {
                             <div style={{ marginTop: 10 }}>Estado: {estadoChange.from} → {estadoChange.to}</div>
                           ) : null}
                           {ev.tipo_accion === "CREACION" ? (
-                            <div style={{ marginTop: 10 }}>Cotización creada{createdEstado ? ` (estado: ${createdEstado})` : ""}</div>
+                            <div style={{ marginTop: 10 }}>
+                              Cotización creada{creationMeta?.estado ? ` (estado: ${creationMeta.estado})` : ""}
+                              {creationMeta?.moneda === "ARS" && creationMeta?.tipo_cambio ? ` - Tipo de cambio: $${creationMeta.tipo_cambio}` : ""}
+                            </div>
                           ) : null}
                           {ev.observaciones ? (
                             <div style={{ marginTop: 10, whiteSpace: "pre-wrap" }}>{ev.observaciones}</div>
