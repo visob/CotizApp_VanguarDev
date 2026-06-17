@@ -13,10 +13,6 @@ export function canManageUsers(user: AuthUser | undefined | null) {
   return user?.rol === "SuperAdmin" || user?.rol === "Admin";
 }
 
-export function getScopeCompanyId(user: AuthUser | undefined | null) {
-  return isSuperAdmin(user) ? null : (user?.empresaId ?? null);
-}
-
 export function canAssignRole(actor: AuthUser, targetRole: UserRole) {
   if (actor.rol === "SuperAdmin") {
     return true;

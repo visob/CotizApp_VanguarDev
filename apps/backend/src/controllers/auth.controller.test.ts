@@ -45,7 +45,7 @@ describe("auth.controller", () => {
     });
 
     it("returns token and user on success", async () => {
-      const mockUser = { id: 1, nombre: "Test", email: "a@b.com", rol: "Vendedor", empresaId: 1, empresaNombre: "Emp" };
+      const mockUser = { id: 1, nombre: "Test", email: "a@b.com", rol: "Vendedor" as const, empresaId: 1, empresaNombre: "Emp" }; 
       mockLoginWithPassword.mockResolvedValue({ ok: true, token: "jwt-token", user: mockUser });
       const res = mockRes();
       await login({ body: { email: "a@b.com", password: "correct" } } as any, res);
