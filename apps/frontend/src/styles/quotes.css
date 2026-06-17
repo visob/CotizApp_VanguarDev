@@ -326,3 +326,47 @@
 .minw-280 {
   width: 280px;
 }
+
+.quotesListPage {
+  height: 100%;
+  overflow: hidden;
+}
+
+.quotesListStack {
+  height: 100%;
+  min-height: 0;
+  grid-template-rows: auto 1fr;
+}
+
+.quotesListTableWrap {
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+}
+
+.quotesListTableWrap .table thead {
+  background: var(--surface);
+}
+
+.quotesListTableWrap .table thead tr {
+  opacity: 1;
+  background: var(--surface);
+}
+
+.quotesListTableWrap .table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  z-index: 2;
+  opacity: 1;
+}
+
+.quotesListTableWrap .table thead th::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1px;
+  background: var(--border);
+}

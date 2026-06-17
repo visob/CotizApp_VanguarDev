@@ -249,8 +249,8 @@ export default function QuotesList() {
   }
 
   return (
-    <div className="page">
-      <div className="stack">
+    <div className="page quotesListPage">
+      <div className="stack quotesListStack">
         <div>
           <div className="pageHeader">
             <div>
@@ -323,12 +323,12 @@ export default function QuotesList() {
               </Button>
             </div>
           )}
+
+          {error ? <div className="error">{error}</div> : null}
+          {loading ? <div className="hint">Cargando...</div> : null}
         </div>
 
-        {error ? <div className="error">{error}</div> : null}
-        {loading ? <div className="hint">Cargando...</div> : null}
-
-        <div className="tableWrap">
+        <div className="tableWrap quotesListTableWrap">
           <table className="table table--min980">
             <thead>
               <tr>
