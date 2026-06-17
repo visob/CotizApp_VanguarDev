@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { useBeforeUnload, useNavigate, Link, useSearchParams } from "react-router-dom";
 import { Button } from "../../components/common/Button";
 import { useToast } from "../../context/ToastContext";
-import { ReturnIcon } from "../../components/common/Icons";
+import { ReturnIcon, TrashIcon } from "../../components/common/Icons";
 import type { CatalogOption, Client, CurrencyCode, Product } from "../../types";
 import * as clientService from "../../services/client.service";
 import * as configService from "../../services/config.service";
@@ -1080,6 +1080,7 @@ export default function QuotesCreate() {
               <div>Nombre del producto</div>
               <div>Cantidad</div>
               <div>Impuestos</div>
+              <div></div>
             </div>
 
             {items.map((it, idx) => (
@@ -1163,6 +1164,19 @@ export default function QuotesCreate() {
                     </option>
                   ))}
                 </select>
+
+                <Button
+                  type="button"
+                  className="btn--icon btn--danger"
+                  style={{ height: 42, width: 42 }}
+                  disabled={items.length <= 1 || saving}
+                  onClick={() => {
+                    setItems((prev) => prev.filter((_, i) => i !== idx));
+                  }}
+                  title="Eliminar producto"
+                >
+                  <TrashIcon size={18} />
+                </Button>
               </div>
             ))}
 
@@ -1186,11 +1200,6 @@ export default function QuotesCreate() {
               >
                 + Añadir otro producto
               </Button>
-              {items.length > 1 ? (
-                <Button onClick={() => setItems((prev) => prev.slice(0, -1))} disabled={saving} className="btn--ghost">
-                  Quitar último
-                </Button>
-              ) : null}
             </div>
           </div>
 

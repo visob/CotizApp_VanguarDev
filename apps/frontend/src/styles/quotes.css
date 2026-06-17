@@ -126,8 +126,9 @@
 .productsHeaderGrid,
 .productsRowGrid {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr;
+  grid-template-columns: 2fr 1fr 1fr 42px;
   gap: 16px;
+  align-items: center;
 }
 
 .summaryGrid {
